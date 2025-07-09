@@ -6,6 +6,8 @@
 !data/*.tsv
 !helper_scripts/
 !helper_scripts/*.py
+!ML/
+!ML/*.py
 # ---------------------------------------------------------------
 !.gitignore
 !README.MD
