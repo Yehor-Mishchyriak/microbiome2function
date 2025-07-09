@@ -4,10 +4,15 @@
 # BUT
 !data/
 !data/*.tsv
-!helper_scripts/
-!helper_scripts/*.py
+!data/*.csv
+
+!data_preparation/
+!data_preparation/*.py
+!data_preparation/*.ipynb
+
 !ML/
 !ML/*.py
+!ML/*.ipynb
 # ---------------------------------------------------------------
 !.gitignore
 !README.MD

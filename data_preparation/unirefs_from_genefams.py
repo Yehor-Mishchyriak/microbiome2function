@@ -35,7 +35,3 @@ def unirefs_from_tsv(path_, uniclust_to_uniref_tsv=None):
     print(f"{unmatched_uniclusts_count} UniClust90s was/were not matched")
 
     return unirefs 
-
-if __name__ == "__main__":
-    print("Extracted Uniref90s: ",
-          unirefs_from_tsv("data/genefamilies_fragment.tsv", "data/mini_uniref_mapping.tsv"))
