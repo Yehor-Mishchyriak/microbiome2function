@@ -1,45 +1,77 @@
 import pandas as pd
 import re
 
-_identity_regex = re.compile(r'^(.*)$')
-
 _info_extr_patterns = {
     "Domain [FT]" : re.compile(r'/note="([^"]+)"'),
     "Domain [CC]" : re.compile(r"DOMAIN:\s(.*?)(?=\s\{|$)"),
-    "Protein families": _identity_regex, # no pre-processing is needed just yet
-    "Gene Ontology (molecular function)" : _identity_regex, # no pre-processing is needed just yet
-    "Gene Ontology (biological process)" : _identity_regex, # no pre-processing is needed just yet
-    "Interacts with" : _identity_regex, # no pre-processing is needed just yet
-    "Function [CC]" : re.compile(r"FUNCTION:\s(.*?)(?=\{|$)"),
+    "Protein families": re.compile(r"(\w.*?)(?=;|$)"),
+    "Gene Ontology (molecular function)" : re.compile(r"(\w.*?)(?=;|$)"),
+    "Gene Ontology (biological process)" : re.compile(r"(\w.*?)(?=;|$)"),
+    "Interacts with" : re.compile(r"(.*?)(?=;|$)"),
+    "Function [CC]" : re.compile(r"FUNCTION:\s(.*?)(?= \{|$)"),
     "Catalytic activity" : re.compile(r"Reaction=(.*?)(?=;|\.|$)"),
-    "EC number" : _identity_regex, # no pre-processing is needed just yet
-    "Pathway" : re.compile(r"PATHWAY:\s(.*?)(?=\{|$)"),
-    "Rhea ID" : _identity_regex, # no pre-processing is needed just yet
-    "Cofactor" : re.compile(r"COFACTOR:\s(.*?)(?=\{|$)"),
+    "EC number" : re.compile(r"(.*?)(?=;|$)"),
+    "Pathway" : re.compile(r"PATHWAY:\s(.*?)(?= \{|$)"),
+    "Rhea ID" : re.compile(r"RHEA:(\d*?)(?=\s|$)"),
+    "Cofactor" : re.compile(r"Name=(.*?)(?=;|$)"),
     "Activity regulation" : re.compile(r"ACTIVITY REGULATION:\s(.*?)(?=\{|$)")
 }
 
-def _preprocess_col_helper(col_name: str):
-    unavailable = set()
+_inline_re = re.compile(r"\s*\(PubMed:\d+(?:\s*,\s*PubMed:\d+)*\)")
 
-    def inner(s: str):
-        if not isinstance(s, str):
-            return s
+_brace_re  = re.compile(r"\s*\{[^}]*PubMed:[^}]*\}")
+
+def strip_pubmed(text: str) -> str:
+    if not isinstance(text, str):
+        return text
+    # in parens
+    text = _inline_re.sub("", text)
+    # in braces
+    text = _brace_re.sub("", text)
+    # collapse any accidental double‑spaces
+    return re.sub(r"\s{2,}", " ", text).strip()
+
+_ws_re = re.compile(r"\s+")
+
+def normalize(s: str) -> str:
+    s = _ws_re.sub(" ", s.strip().casefold())
+    s = s.rstrip(" .;,")
+    return s
+
+def _preprocess_col_helper(col_name: str, apply_norm: bool = True):
+    unknown = set()
+
+    def _inner(value: str):
+        
+        if not isinstance(value, str):
+            return value
+        
+        text = strip_pubmed(value)
 
         try:
-            matches = re.findall(_info_extr_patterns[col_name], s)
+            regex = _info_extr_patterns[col_name]
+            matches = re.findall(regex, text)
         except KeyError:
-            if col_name not in unavailable:
-                print(f"No preprocessing for '{col_name}' — skipping.")
-                unavailable.add(col_name)
-            return s
+            if col_name not in unknown:
+                print(f"No preprocessing rule for '{col_name}' — leaving as is.")
+                unknown.add(col_name)
+            return normalize(text) if apply_norm else text
 
         if not matches:
-            return s
+            return normalize(text) if apply_norm else text
 
-        return matches[0] if len(matches) == 1 else ",".join(matches) # NOTE, need to make it a list! -- not a string!
+        if len(matches) == 1:
+            res = matches[0]
+            return normalize(res) if apply_norm else res
 
-    return inner
+        cleaned = [normalize(m) for m in matches] if apply_norm else matches
+        return tuple(set(cleaned))
+
+    return _inner
 
 def preprocess_col(df: pd.DataFrame, col_name: str) -> None:
     df[col_name] = df[col_name].apply(_preprocess_col_helper(col_name))
+
+
+if __name__ == "__main__":
+    pass
