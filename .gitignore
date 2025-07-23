@@ -7,10 +7,10 @@
 !data_preparation/notebooks/*.ipynb
 !data_preparation/data_prep_scripts/
 !data_preparation/data_prep_scripts/*.py
-# ---------------------------------------------------------------
-!tests/
-!tests/testing_data/
-!tests/testing_data/*.json
+!data_preparation/data_prep_scripts/tests/
+!data_preparation/data_prep_scripts/tests/*.py
+!data_preparation/data_prep_scripts/tests/testing_data/
+!data_preparation/data_prep_scripts/tests/testing_data/*.json
 # ---------------------------------------------------------------
 !ML/
 !ML/*.py

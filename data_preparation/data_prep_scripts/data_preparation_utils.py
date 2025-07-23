@@ -38,7 +38,7 @@ def normalize(s: str) -> str:
     s = s.rstrip(" .;,")
     return s
 
-def _preprocess_col_helper(col_name: str, apply_norm: bool = True):
+def _preprocess_col_helper(col_name: str, apply_norm: bool = True, apply_strip_pubmed: bool = True):
     unknown = set()
 
     def _inner(value: str):
@@ -46,7 +46,7 @@ def _preprocess_col_helper(col_name: str, apply_norm: bool = True):
         if not isinstance(value, str):
             return value
         
-        text = strip_pubmed(value)
+        text = strip_pubmed(value) if apply_strip_pubmed else value
 
         try:
             regex = _info_extr_patterns[col_name]
@@ -65,7 +65,7 @@ def _preprocess_col_helper(col_name: str, apply_norm: bool = True):
             return normalize(res) if apply_norm else res
 
         cleaned = [normalize(m) for m in matches] if apply_norm else matches
-        return tuple(set(cleaned))
+        return tuple(dict.fromkeys(cleaned))
 
     return _inner
 
