@@ -98,6 +98,7 @@ atexit.register(Testing.display_stats, Testing.stats)
 
 if __name__ == "__main__":
     unittest.main()
+    
     """ July 23, 2025
     =============================================================
     'Activity regulation' passed 1 test(s) and failed 19 test(s)
