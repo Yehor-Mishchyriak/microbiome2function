@@ -89,99 +89,109 @@
       "Elongation factor P family": "Elongation factor P family"
     },
     "Gene Ontology (molecular function)": {
-      "UDP-2,3-diacylglucosamine hydrolase activity [GO:0008758]": "UDP-2,3-diacylglucosamine hydrolase activity [GO:0008758]",
+      "UDP-2,3-diacylglucosamine hydrolase activity [GO:0008758]": "GO:0008758",
       "DNA binding [GO:0003677]; phosphorelay response regulator activity [GO:0000156]": [
-        "DNA binding [GO:0003677]",
-        "phosphorelay response regulator activity [GO:0000156]"
-    ],
-      "hydroxylamine reductase activity [GO:0050418]; peroxidase activity [GO:0004601]":[
-        "hydroxylamine reductase activity [GO:0050418]",
-        "peroxidase activity [GO:0004601]"
-    ],
+        "GO:0003677",
+        "GO:0000156"
+      ],
+      "hydroxylamine reductase activity [GO:0050418]; peroxidase activity [GO:0004601]": [
+        "GO:0050418",
+        "GO:0004601"
+      ],
       "4 iron, 4 sulfur cluster binding [GO:0051539]; lyase activity [GO:0016829]; metal ion binding [GO:0046872]": [
-        "4 iron, 4 sulfur cluster binding [GO:0051539]",
-        "lyase activity [GO:0016829]; metal ion binding [GO:0046872]"
-    ],
-      "oxidoreductase activity [GO:0016491]": "oxidoreductase activity [GO:0016491]",
+        "GO:0051539",
+        "GO:0016829",
+        "GO:0046872"
+      ],
+      "oxidoreductase activity [GO:0016491]": "GO:0016491",
       "ATP binding [GO:0005524]; ribonucleoside-diphosphate reductase activity, thioredoxin disulfide as acceptor [GO:0004748]": [
-        "ATP binding [GO:0005524]",
-        "ribonucleoside-diphosphate reductase activity, thioredoxin disulfide as acceptor [GO:0004748]"
-    ],
+        "GO:0005524",
+        "GO:0004748"
+      ],
       "6-phosphofructokinase activity [GO:0003872]; AMP binding [GO:0016208]; ATP binding [GO:0005524]; fructose-6-phosphate binding [GO:0070095]; identical protein binding [GO:0042802]; metal ion binding [GO:0046872]; monosaccharide binding [GO:0048029]": [
-      "6-phosphofructokinase activity [GO:0003872]",
-      "AMP binding [GO:0016208]", 
-      "ATP binding [GO:0005524]", 
-      "fructose-6-phosphate binding [GO:0070095]", 
-      "identical protein binding [GO:0042802]",
-      "metal ion binding [GO:0046872]",
-      "monosaccharide binding [GO:0048029]"
-    ],
-      "acyl-CoA hydrolase activity [GO:0016289]": "acyl-CoA hydrolase activity [GO:0016289]",
+        "GO:0003872",
+        "GO:0016208",
+        "GO:0005524",
+        "GO:0070095",
+        "GO:0042802",
+        "GO:0046872",
+        "GO:0048029"
+      ],
+      "acyl-CoA hydrolase activity [GO:0016289]": "GO:0016289",
       "ATP binding [GO:0005524]; DNA binding [GO:0003677]; DNA topoisomerase type II (double strand cut, ATP-hydrolyzing) activity [GO:0003918]": [
-        "ATP binding [GO:0005524]", "DNA binding [GO:0003677]",
-        "DNA topoisomerase type II (double strand cut, ATP-hydrolyzing) activity [GO:0003918]"
-    ],
-      "lysophospholipase activity [GO:0004622]": "lysophospholipase activity [GO:0004622]",
-      "phosphoribosylaminoimidazolecarboxamide formyltransferase activity [GO:0004643]": "phosphoribosylaminoimidazolecarboxamide formyltransferase activity [GO:0004643]",
-      "kinase activity [GO:0016301]": "kinase activity [GO:0016301]",
-      "thiamine-phosphate diphosphorylase activity [GO:0004789]": "thiamine-phosphate diphosphorylase activity [GO:0004789]",
-      "ATP binding [GO:0005524]; magnesium ion binding [GO:0000287]; selenide, water dikinase activity [GO:0004756]":[
-        "ATP binding [GO:0005524]",
-        "magnesium ion binding [GO:0000287]",
-        "selenide, water dikinase activity [GO:0004756]"
-    ],
+        "GO:0005524",
+        "GO:0003677",
+        "GO:0003918"
+      ],
+      "lysophospholipase activity [GO:0004622]": "GO:0004622",
+      "phosphoribosylaminoimidazolecarboxamide formyltransferase activity [GO:0004643]": "GO:0004643",
+      "kinase activity [GO:0016301]": "GO:0016301",
+      "thiamine-phosphate diphosphorylase activity [GO:0004789]": "GO:0004789",
+      "ATP binding [GO:0005524]; magnesium ion binding [GO:0000287]; selenide, water dikinase activity [GO:0004756]": [
+        "GO:0005524",
+        "GO:0000287",
+        "GO:0004756"
+      ],
       "DNA binding [GO:0003677]; sigma factor activity [GO:0016987]": [
-      "DNA binding [GO:0003677]",
-      "sigma factor activity [GO:0016987]"
-    ],
+        "GO:0003677",
+        "GO:0016987"
+      ],
       "galactosamine-6-phosphate isomerase activity [GO:0043877]; glucosamine-6-phosphate deaminase activity [GO:0004342]; identical protein binding [GO:0042802]": [
-        "galactosamine-6-phosphate isomerase activity [GO:0043877]",
-        "glucosamine-6-phosphate deaminase activity [GO:0004342]",
-        "identical protein binding [GO:0042802]"
-    ],
-      "ATP binding [GO:0005524]; kinase activity [GO:0016301]; thiamine binding [GO:0030975]; thiamine diphosphokinase activity [GO:0004788]": "ATP binding [GO:0005524]; kinase activity [GO:0016301]; thiamine binding [GO:0030975]; thiamine diphosphokinase activity [GO:0004788]",
-      "metal ion binding [GO:0046872]; molybdopterin molybdotransferase activity [GO:0061599]": "metal ion binding [GO:0046872]; molybdopterin molybdotransferase activity [GO:0061599]",
-      "CDP-diacylglycerol-inositol 3-phosphatidyltransferase activity [GO:0003881]": "CDP-diacylglycerol-inositol 3-phosphatidyltransferase activity [GO:0003881]",
-      "N-acetylmuramoyl-L-alanine amidase activity [GO:0008745]": "N-acetylmuramoyl-L-alanine amidase activity [GO:0008745]"
+        "GO:0043877",
+        "GO:0004342",
+        "GO:0042802"
+      ],
+      "ATP binding [GO:0005524]; kinase activity [GO:0016301]; thiamine binding [GO:0030975]; thiamine diphosphokinase activity [GO:0004788]": [
+        "GO:0005524",
+        "GO:0016301",
+        "GO:0030975",
+        "GO:0004788"
+      ],
+      "metal ion binding [GO:0046872]; molybdopterin molybdotransferase activity [GO:0061599]": [
+        "GO:0046872",
+        "GO:0061599"
+      ],
+      "CDP-diacylglycerol-inositol 3-phosphatidyltransferase activity [GO:0003881]": "GO:0003881",
+      "N-acetylmuramoyl-L-alanine amidase activity [GO:0008745]": "GO:0008745"
     },
     "Gene Ontology (biological process)": {
       "'de novo' IMP biosynthetic process [GO:0006189]; purine nucleobase biosynthetic process [GO:0009113]": [
-        "'de novo' IMP biosynthetic process [GO:0006189]",
-        "purine nucleobase biosynthetic process [GO:0009113]"
-    ],
-      "DNA transposition [GO:0006313]": "DNA transposition [GO:0006313]",
+        "GO:0006189",
+        "GO:0009113"
+      ],
+      "DNA transposition [GO:0006313]": "GO:0006313",
       "amino acid biosynthetic process [GO:0008652]; aromatic amino acid family biosynthetic process [GO:0009073]; chorismate biosynthetic process [GO:0009423]": [
-        "amino acid biosynthetic process [GO:0008652]",
-        "aromatic amino acid family biosynthetic process [GO:0009073]",
-        "chorismate biosynthetic process [GO:0009423]"
-    ],
-      "cobalamin biosynthetic process [GO:0009236]": "cobalamin biosynthetic process [GO:0009236]",
-      "methylation [GO:0032259]": "methylation [GO:0032259]",
+        "GO:0008652",
+        "GO:0009073",
+        "GO:0009423"
+      ],
+      "cobalamin biosynthetic process [GO:0009236]": "GO:0009236",
+      "methylation [GO:0032259]": "GO:0032259",
       "DNA integration [GO:0015074]; DNA recombination [GO:0006310]": [
-        "DNA integration [GO:0015074]",
-        "DNA recombination [GO:0006310]"
-    ],
-      "catabolic process [GO:0009056]": "catabolic process [GO:0009056]",
-      "nuclear-transcribed mRNA catabolic process, 3'-5' exonucleolytic nonsense-mediated decay [GO:0070478]": "nuclear-transcribed mRNA catabolic process, 3'-5' exonucleolytic nonsense-mediated decay [GO:0070478]",
-      "biosynthetic process [GO:0009058]": "biosynthetic process [GO:0009058]",
-      "protein processing [GO:0016485]": "protein processing [GO:0016485]",
-      "DNA-templated transcription [GO:0006351]": "DNA-templated transcription [GO:0006351]",
+        "GO:0015074",
+        "GO:0006310"
+      ],
+      "catabolic process [GO:0009056]": "GO:0009056",
+      "nuclear-transcribed mRNA catabolic process, 3'-5' exonucleolytic nonsense-mediated decay [GO:0070478]": "GO:0070478",
+      "biosynthetic process [GO:0009058]": "GO:0009058",
+      "protein processing [GO:0016485]": "GO:0016485",
+      "DNA-templated transcription [GO:0006351]": "GO:0006351",
       "cell division [GO:0051301]; cell wall organization [GO:0071555]; peptidoglycan biosynthetic process [GO:0009252]; regulation of cell shape [GO:0008360]": [
-        "cell division [GO:0051301]",
-        "cell wall organization [GO:0071555]",
-        "peptidoglycan biosynthetic process [GO:0009252]",
-        "regulation of cell shape [GO:0008360]"
-    ],
-      "DNA integration [GO:0015074]": "DNA integration [GO:0015074]",
-      "proteolysis [GO:0006508]": "proteolysis [GO:0006508]",
-      "xenobiotic detoxification by transmembrane export across the plasma membrane [GO:1990961]": "xenobiotic detoxification by transmembrane export across the plasma membrane [GO:1990961]",
-      "fatty acid biosynthetic process [GO:0006633]": "fatty acid biosynthetic process [GO:0006633]",
+        "GO:0051301",
+        "GO:0071555",
+        "GO:0009252",
+        "GO:0008360"
+      ],
+      "DNA integration [GO:0015074]": "GO:0015074",
+      "proteolysis [GO:0006508]": "GO:0006508",
+      "xenobiotic detoxification by transmembrane export across the plasma membrane [GO:1990961]": "GO:1990961",
+      "fatty acid biosynthetic process [GO:0006633]": "GO:0006633",
       "nucleoside catabolic process [GO:0009164]; nucleotide catabolic process [GO:0009166]; UMP salvage [GO:0044206]": [
-        "nucleoside catabolic process [GO:0009164]",
-        "nucleotide catabolic process [GO:0009166]",
-        "UMP salvage [GO:0044206]"
-    ],
-      "L-proline biosynthetic process [GO:0055129]": "L-proline biosynthetic process [GO:0055129]"
+        "GO:0009164",
+        "GO:0009166",
+        "GO:0044206"
+      ],
+      "L-proline biosynthetic process [GO:0055129]": "GO:0055129"
     },
     "Interacts with": {
       "P03711": "P03711",
@@ -240,7 +250,7 @@
       "CATALYTIC ACTIVITY: Reaction=4 Fe(2+) + O2 + 6 H2O = 4 iron(III) oxide-hydroxide + 12 H(+); Xref=Rhea:RHEA:11972, ChEBI:CHEBI:15377, ChEBI:CHEBI:15378, ChEBI:CHEBI:15379, ChEBI:CHEBI:29033, ChEBI:CHEBI:78619; EC=1.16.3.2; Evidence={ECO:0000256|ARBA:ARBA00048035, ECO:0000256|RuleBase:RU361145};": "4 Fe(2+) + O2 + 6 H2O = 4 iron(III) oxide-hydroxide + 12 H(+)",
       "CATALYTIC ACTIVITY: Reaction=L-alanine = D-alanine; Xref=Rhea:RHEA:20249, ChEBI:CHEBI:57416, ChEBI:CHEBI:57972; EC=5.1.1.1; Evidence={ECO:0000256|ARBA:ARBA00000316, ECO:0000256|HAMAP-Rule:MF_01201};": "L-alanine = D-alanine",
       "CATALYTIC ACTIVITY: Reaction=L-cysteine + L-glutamate + ATP = gamma-L-glutamyl-L-cysteine + ADP + phosphate + H(+); Xref=Rhea:RHEA:13285, ChEBI:CHEBI:15378, ChEBI:CHEBI:29985, ChEBI:CHEBI:30616, ChEBI:CHEBI:35235, ChEBI:CHEBI:43474, ChEBI:CHEBI:58173, ChEBI:CHEBI:456216; EC=6.3.2.2; Evidence={ECO:0000256|ARBA:ARBA00048819};": "L-cysteine + L-glutamate + ATP = gamma-L-glutamyl-L-cysteine + ADP + phosphate + H(+)",
-      "CATALYTIC ACTIVITY: Reaction=Endonucleolytic cleavage to 5'-phosphomonoester.; EC=3.1.26.3; Evidence={ECO:0000256|ARBA:ARBA00000109, ECO:0000256|HAMAP-Rule:MF_00104};": "Endonucleolytic cleavage to 5'-phosphomonoester.",
+      "CATALYTIC ACTIVITY: Reaction=Endonucleolytic cleavage to 5'-phosphomonoester.; EC=3.1.26.3; Evidence={ECO:0000256|ARBA:ARBA00000109, ECO:0000256|HAMAP-Rule:MF_00104};": "Endonucleolytic cleavage to 5'-phosphomonoester",
       "CATALYTIC ACTIVITY: Reaction=L-aspartate 4-semialdehyde + pyruvate = (2S,4S)-4-hydroxy-2,3,4,5-tetrahydrodipicolinate + H2O + H(+); Xref=Rhea:RHEA:34171, ChEBI:CHEBI:15361, ChEBI:CHEBI:15377, ChEBI:CHEBI:15378, ChEBI:CHEBI:67139, ChEBI:CHEBI:537519; EC=4.3.3.7; Evidence={ECO:0000255|HAMAP-Rule:MF_00418};": "L-aspartate 4-semialdehyde + pyruvate = (2S,4S)-4-hydroxy-2,3,4,5-tetrahydrodipicolinate + H2O + H(+)",
       "CATALYTIC ACTIVITY: Reaction=L-lysine + H(+) = cadaverine + CO2; Xref=Rhea:RHEA:22352, ChEBI:CHEBI:15378, ChEBI:CHEBI:16526, ChEBI:CHEBI:32551, ChEBI:CHEBI:58384; EC=4.1.1.18;": "L-lysine + H(+) = cadaverine + CO2",
       "CATALYTIC ACTIVITY: Reaction=[(1->4)-alpha-D-glucosyl](n) + phosphate = [(1->4)-alpha-D-glucosyl](n-1) + alpha-D-glucose 1-phosphate; Xref=Rhea:RHEA:41732, Rhea:RHEA-COMP:9584, Rhea:RHEA-COMP:9586, ChEBI:CHEBI:15444, ChEBI:CHEBI:43474, ChEBI:CHEBI:58601; EC=2.4.1.1; Evidence={ECO:0000256|RuleBase:RU000587};": "[(1->4)-alpha-D-glucosyl](n) + phosphate = [(1->4)-alpha-D-glucosyl](n-1) + alpha-D-glucose 1-phosphate",
@@ -266,7 +276,7 @@
         "dITP + H2O = dIMP + diphosphate + H(+)",
         "glycerol + ATP = sn-glycerol 3-phosphate + ADP + H(+)"
       ],
-      "CATALYTIC ACTIVITY: Reaction=Hydrolysis of alpha-(2->3)-, alpha-(2->6)-, alpha-(2->8)- glycosidic linkages of terminal sialic acid residues in oligosaccharides, glycoproteins, glycolipids, colominic acid and synthetic substrates.; EC=3.2.1.18; Evidence={ECO:0000256|ARBA:ARBA00000427};": "Hydrolysis of alpha-(2->3)-, alpha-(2->6)-, alpha-(2->8)- glycosidic linkages of terminal sialic acid residues in oligosaccharides, glycoproteins, glycolipids, colominic acid and synthetic substrates.",
+      "CATALYTIC ACTIVITY: Reaction=Hydrolysis of alpha-(2->3)-, alpha-(2->6)-, alpha-(2->8)- glycosidic linkages of terminal sialic acid residues in oligosaccharides, glycoproteins, glycolipids, colominic acid and synthetic substrates.; EC=3.2.1.18; Evidence={ECO:0000256|ARBA:ARBA00000427};": "Hydrolysis of alpha-(2->3)-, alpha-(2->6)-, alpha-(2->8)- glycosidic linkages of terminal sialic acid residues in oligosaccharides, glycoproteins, glycolipids, colominic acid and synthetic substrates",
       "CATALYTIC ACTIVITY: Reaction=N(6)-dimethylallyladenosine(37) in tRNA + (sulfur carrier)-SH + AH2 + 2 S-adenosyl-L-methionine = 2-methylsulfanyl-N(6)-dimethylallyladenosine(37) in tRNA + (sulfur carrier)-H + 5'-deoxyadenosine + L-methionine + A + S-adenosyl-L-homocysteine + 2 H(+); Xref=Rhea:RHEA:37067, Rhea:RHEA-COMP:10375, Rhea:RHEA-COMP:10376, Rhea:RHEA-COMP:14737, Rhea:RHEA-COMP:14739, ChEBI:CHEBI:13193, ChEBI:CHEBI:15378, ChEBI:CHEBI:17319, ChEBI:CHEBI:17499, ChEBI:CHEBI:29917, ChEBI:CHEBI:57844, ChEBI:CHEBI:57856, ChEBI:CHEBI:59789, ChEBI:CHEBI:64428, ChEBI:CHEBI:74415, ChEBI:CHEBI:74417; EC=2.8.4.3; Evidence={ECO:0000256|HAMAP-Rule:MF_01864};": "N(6)-dimethylallyladenosine(37) in tRNA + (sulfur carrier)-SH + AH2 + 2 S-adenosyl-L-methionine = 2-methylsulfanyl-N(6)-dimethylallyladenosine(37) in tRNA + (sulfur carrier)-H + 5'-deoxyadenosine + L-methionine + A + S-adenosyl-L-homocysteine + 2 H(+)",
       "CATALYTIC ACTIVITY: Reaction=DNA(n) + a 2'-deoxyribonucleoside 5'-triphosphate = DNA(n+1) + diphosphate; Xref=Rhea:RHEA:22508, Rhea:RHEA-COMP:17339, Rhea:RHEA-COMP:17340, ChEBI:CHEBI:33019, ChEBI:CHEBI:61560, ChEBI:CHEBI:173112; EC=2.7.7.7; Evidence={ECO:0000256|ARBA:ARBA00049244, ECO:0000256|RuleBase:RU364063};": "DNA(n) + a 2'-deoxyribonucleoside 5'-triphosphate = DNA(n+1) + diphosphate"
     },
@@ -291,7 +301,7 @@
       "3.2.1.28": "3.2.1.28",
       "2.7.7.65": "2.7.7.65",
       "3.1.11.-; 3.1.13.-": [
-        "3.1.11.-;",
+        "3.1.11.-",
         "3.1.13.-"
       ]
     },
@@ -350,7 +360,7 @@
       "RHEA:12104": "12104"
     },
     "Cofactor": {
-      "COFACTOR: Name=[4Fe-4S] cluster; Xref=ChEBI:CHEBI:49883; Evidence={ECO:0000256|ARBA:ARBA00001966};": "[4Fe-4S]",
+      "COFACTOR: Name=[4Fe-4S] cluster; Xref=ChEBI:CHEBI:49883; Evidence={ECO:0000256|ARBA:ARBA00001966};": "[4Fe-4S] cluster",
       "COFACTOR: Name=FMN; Xref=ChEBI:CHEBI:58210; Evidence={ECO:0000256|HAMAP-Rule:MF_02225}; Note=Binds 1 FMN per subunit. {ECO:0000256|HAMAP-Rule:MF_02225}; COFACTOR: Name=Mg(2+); Xref=ChEBI:CHEBI:18420; Evidence={ECO:0000256|HAMAP-Rule:MF_02225};": [
         "FMN",
         "Mg(2+)"

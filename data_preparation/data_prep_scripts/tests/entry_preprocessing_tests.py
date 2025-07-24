@@ -32,7 +32,7 @@ class Testing(unittest.TestCase):
         for test_case in stats:
             P = stats[test_case]["Passed"]
             F = stats[test_case]["Failed"]
-            print(f"'{test_case}' passed {P} test(s) and failed {F} test(s)")
+            print(f"'{test_case}' passed {P}/{P+F} test(s)")
         print("=============================================================")
 
     def _test(self, col_name: str):
@@ -41,7 +41,7 @@ class Testing(unittest.TestCase):
         helper = _preprocess_col_helper(col_name, apply_norm=False, apply_strip_pubmed=False)
         for i, (raw, expected) in enumerate(Testing.data[col_name].items(), start=1):
             print(f"Running test {i} for {col_name}")
-            expected = tuple(expected) if isinstance(expected, list) else expected
+            expected = tuple(dict.fromkeys(expected)) if isinstance(expected, list) else expected
             with self.subTest(raw=raw):
                 try:
                     self.assertEqual(helper(raw), expected)
@@ -52,67 +52,46 @@ class Testing(unittest.TestCase):
                 print(f"Test {i} was successful!")
                 local_stats["Passed"] += 1
 
-    def test_Domain_FT(self):
+    def test_Domain_FT(self): # PASSES ALL
         self._test("Domain [FT]")
 
-    def test_Domain_FT(self):
-        self._test("Domain [FT]")
-
-    def test_Domain_CC(self):
+    def test_Domain_CC(self): # PASSES ALL
         self._test("Domain [CC]")
 
-    def test_Protein_families(self):
+    def test_Protein_families(self): # PASSES ALL
         self._test("Protein families")
 
-    def test_GO_MF(self):
+    def test_GO_MF(self): # PASSES ALL
         self._test("Gene Ontology (molecular function)")
 
-    def test_GO_BP(self):
+    def test_GO_BP(self): # PASSES ALL
         self._test("Gene Ontology (biological process)")
 
-    def test_Interacts_with(self):
+    def test_Interacts_with(self): # PASSES ALL
         self._test("Interacts with")
 
-    def test_Function_CC(self):
+    def test_Function_CC(self): # PASSES ALL
         self._test("Function [CC]")
 
-    def test_Catalytic_activity(self):
+    def test_Catalytic_activity(self): # PASSES ALL
         self._test("Catalytic activity")
 
-    def test_ECN(self):
+    def test_ECN(self): # PASSES ALL
         self._test("EC number")
 
-    def test_Pathway(self):
+    def test_Pathway(self): # PASSES ALL
         self._test("Pathway")
 
-    def test_Rhea_ID(self):
+    def test_Rhea_ID(self): # PASSES ALL
         self._test("Rhea ID")
 
-    def test_Cofactor(self):
+    def test_Cofactor(self): # PASSES ALL
         self._test("Cofactor")
     
-    def test_Activity_regulation(self):
+    def test_Activity_regulation(self): # PASSES ALL
         self._test("Activity regulation")
 
 atexit.register(Testing.display_stats, Testing.stats)
 
 if __name__ == "__main__":
     unittest.main()
-    
-    """ July 23, 2025
-    =============================================================
-    'Activity regulation' passed 1 test(s) and failed 19 test(s)
-    'Catalytic activity' passed 18 test(s) and failed 2 test(s)
-    'Cofactor' passed 16 test(s) and failed 2 test(s)
-    'Domain [CC]' passed 19 test(s) and failed 0 test(s)
-    'Domain [FT]' passed 20 test(s) and failed 0 test(s)
-    'EC number' passed 0 test(s) and failed 20 test(s)
-    'Function [CC]' passed 20 test(s) and failed 0 test(s)
-    'Gene Ontology (biological process)' passed 17 test(s) and failed 1 test(s)
-    'Gene Ontology (molecular function)' passed 17 test(s) and failed 3 test(s)
-    'Interacts with' passed 0 test(s) and failed 20 test(s)
-    'Pathway' passed 19 test(s) and failed 1 test(s)
-    'Protein families' passed 18 test(s) and failed 1 test(s)
-    'Rhea ID' passed 20 test(s) and failed 0 test(s)
-    =============================================================
-    """

@@ -26,10 +26,16 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
-recommended_fields = [
+recommended_fields_example1 = [
     "accession", "ft_domain", "cc_domain", "protein_families", "go_f", "go_p",
     "cc_interaction", "cc_function", "cc_catalytic_activity",
     "ec", "cc_pathway", "rhea", "cc_cofactor", "cc_activity_regulation"
+]
+
+recommended_fields_example2 = [
+    "accession", "ft_domain", "cc_domain", "protein_families", "go_f", "go_p",
+    "cc_function", "cc_catalytic_activity",
+    "ec", "cc_pathway", "rhea", "cc_cofactor", "sequence"
 ]
 
 def unirefs_from_tsv(path_, uniclust_to_uniref_tsv=None) -> list:
@@ -70,7 +76,7 @@ def unirefs_from_tsv(path_, uniclust_to_uniref_tsv=None) -> list:
 
     return list(unirefs)
 
-def retrieve_fields_for_unirefs(uniref_ids: List[str], fields: List[str] = recommended_fields, batch_size: int = 100,
+def retrieve_fields_for_unirefs(uniref_ids: List[str], fields: List[str], batch_size: int = 100,
                   rps: float = 10, filter_out_bad_ids: bool = True, subroutine: bool = False) -> pd.DataFrame:
 
     if filter_out_bad_ids and not subroutine:

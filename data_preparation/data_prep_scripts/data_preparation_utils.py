@@ -5,16 +5,16 @@ _info_extr_patterns = {
     "Domain [FT]" : re.compile(r'/note="([^"]+)"'),
     "Domain [CC]" : re.compile(r"DOMAIN:\s(.*?)(?=\s\{|$)"),
     "Protein families": re.compile(r"(\w.*?)(?=;|$)"),
-    "Gene Ontology (molecular function)" : re.compile(r"(\w.*?)(?=;|$)"),
-    "Gene Ontology (biological process)" : re.compile(r"(\w.*?)(?=;|$)"),
-    "Interacts with" : re.compile(r"(.*?)(?=;|$)"),
-    "Function [CC]" : re.compile(r"FUNCTION:\s(.*?)(?= \{|$)"),
+    "Gene Ontology (molecular function)" : re.compile(r"\[(GO:\d{7})\]"),
+    "Gene Ontology (biological process)" : re.compile(r"\[(GO:\d{7})\]"),
+    "Interacts with" : re.compile(r"([A-Z0-9]+?)(?=\s|;|$)"),
+    "Function [CC]" : re.compile(r"FUNCTION:\s*(.+?\S)(?=\s*\{|$)"),
     "Catalytic activity" : re.compile(r"Reaction=(.*?)(?=;|\.|$)"),
-    "EC number" : re.compile(r"(.*?)(?=;|$)"),
-    "Pathway" : re.compile(r"PATHWAY:\s(.*?)(?= \{|$)"),
+    "EC number" : re.compile(r"([\d\.-]+?)(?=;|$)"),
+    "Pathway" : re.compile(r"PATHWAY:\s*(.+?\S)(?=\s*;\s*PATHWAY:|\s*\{|\s*$)"),
     "Rhea ID" : re.compile(r"RHEA:(\d*?)(?=\s|$)"),
     "Cofactor" : re.compile(r"Name=(.*?)(?=;|$)"),
-    "Activity regulation" : re.compile(r"ACTIVITY REGULATION:\s(.*?)(?=\{|$)")
+    "Activity regulation" : re.compile(r"ACTIVITY REGULATION:\s*(.+?\S)(?=\s*\{|$)")
 }
 
 _inline_re = re.compile(r"\s*\(PubMed:\d+(?:\s*,\s*PubMed:\d+)*\)")
