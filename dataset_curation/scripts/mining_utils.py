@@ -1,7 +1,6 @@
 # external:
 import requests
 import pandas as pd
-from tqdm import tqdm
 from numpy import nan
 # builtins:
 import os
