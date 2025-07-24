@@ -63,8 +63,8 @@ def ids_from_tsv(path_: str) -> list:
 
     return list(unirefs), list(uniclusts)
 
-def retrieve_fields_for_unirefs(uniref_ids: List[str], fields: List[str], batch_size: int = 1000,
-                  rps: float = 20, filter_out_bad_ids: bool = True, subroutine: bool = False) -> pd.DataFrame:
+def retrieve_fields_for_unirefs(uniref_ids: List[str], fields: List[str], batch_size: int = 100,
+                  rps: float = 10, filter_out_bad_ids: bool = True, subroutine: bool = False) -> pd.DataFrame:
 
     if filter_out_bad_ids and not subroutine:
         p1 = r"^UNK"; p2 = r"^UPI"
@@ -147,13 +147,18 @@ def retrieve_fields_for_unirefs(uniref_ids: List[str], fields: List[str], batch_
     
     DF.replace("", nan, inplace=True)
     DF.set_index("Entry", inplace=True, drop=True)
-    DF.dropna(how="all", inplace=True)
+    
+    subset = list(DF.columns)
+    subset.remove("Sequence")
+    DF.dropna(how="all", subset=subset, inplace=True)
 
     return DF
 
 
 __all__ = [
-    "unirefs_from_tsv",
+    "recommended_fields_example1",
+    "recommended_fields_example2",
+    "ids_from_tsv",
     "retrieve_fields_for_unirefs",
 ]
 
