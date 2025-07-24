@@ -42,6 +42,7 @@ def _get_domain_sequences(domain_entry: str, full_seq: str) -> List[str]:
 
 # EMBEDDING FUNCTIONS:
 
+# NOTE: really need to implement batching for this!
 @torch.no_grad()
 def _embed_sequence(seq: str, model, tokenizer) -> torch.Tensor:
     """
