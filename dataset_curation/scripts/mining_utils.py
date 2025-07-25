@@ -81,7 +81,7 @@ def retrieve_fields_for_unirefs(uniref_ids: List[str], fields: List[str], reques
     dfs: list[pd.DataFrame] = []
     total_ids = len(uniref_ids)
     
-    total_batches = ceil(total_ids / request_size)
+    total_requests= ceil(total_ids / request_size)
     # process in batches
     for request_id, start in enumerate(range(0, total_ids, request_size), start=1):
         
@@ -89,7 +89,7 @@ def retrieve_fields_for_unirefs(uniref_ids: List[str], fields: List[str], reques
         batch = uniref_ids[start:end]
 
         if not subroutine:
-            _logger.info(f"Processed {(request_id-1)}/{total_batches} batches; Querying {len(batch)} IDs…")
+            _logger.info(f"Processed {(request_id-1)}/{total_requests} requests; Querying {len(batch)} ID(s)…")
 
         params = {
             "format": "tsv",
@@ -146,7 +146,7 @@ def retrieve_fields_for_unirefs(uniref_ids: List[str], fields: List[str], reques
         DF.set_index("accession", inplace=True, drop=True)
         return DF
     
-    DF.replace("", nan, inplace=True)
+    DF = DF.replace("", nan)
     DF.set_index("Entry", inplace=True, drop=True)
     
     subset = list(DF.columns)
@@ -156,19 +156,32 @@ def retrieve_fields_for_unirefs(uniref_ids: List[str], fields: List[str], reques
     return DF
 
 def process_uniref_batches(uniref_ids: List[str], fields: List[str], batch_size=40_000, 
-                single_api_request_size: int = 100, rps: float = 10, filter_out_bad_ids: bool = True):
-    
+                single_api_request_size: int = 100, rps: float = 10, save_to_dir: str = None,
+                filter_out_bad_ids: bool = True):
+
     total_ids = len(uniref_ids)
     # process in batches
     for request_id, start in enumerate(range(0, total_ids, batch_size), start=1):
         end = start + batch_size
         batch = uniref_ids[start:end]
+
+        if save_to_dir is None:
+             _logger.warning(f"save_to_dir is set to None! Repsonse to the API request #{request_id} will discarded")
+             file = None
+        else:
+            file = os.path.join(save_to_dir, f'batch_{request_id}.csv')
+            _logger.info(f"Repsonse to the API request #{request_id} will be saved at {file}")
+
         retrieve_fields_for_unirefs(uniref_ids=batch,
                                     fields=fields,
                                     request_size=single_api_request_size,
                                     rps=rps,
                                     filter_out_bad_ids=filter_out_bad_ids
-                                    ).to_csv(f'batch_{request_id}.csv', index=False)
+                                    ).to_csv(path_or_buf=file,
+                                             index=True)
+        
+def merge_dfs():
+    pass
 
 
 __all__ = [
