@@ -54,9 +54,13 @@ def ids_from_tsv(path_: str, out: type = list) -> list:
 
     return out(unirefs), out(uniclusts)
 
-def unirefs_from_multiple_files(dir_path: str):
+def unirefs_from_multiple_files(dir_path: str, pattern: re.Pattern = None):
+    if pattern:
+        file_paths = [os.path.join(dir_path, file_name) for file_name in os.listdir(dir_path)
+                    if re.match(pattern, file_name)]
+    else:
+        file_paths = [os.path.join(dir_path, file_name) for file_name in os.listdir(dir_path)]
 
-    file_paths = [os.path.join(dir_path, file_name) for file_name in os.listdir(dir_path)]
     all_unirefs = set()
     for path_ in file_paths:
         unirefs, _ = ids_from_tsv(path_, out=set)
@@ -201,10 +205,14 @@ def process_uniref_batches(uniref_ids: List[str], fields: List[str], batch_size=
         
     return save_to_dir
         
-def merge_dfs(dir_path: str) -> pd.DataFrame:
-    file_paths = sorted([os.path.join(dir_path, file_name) 
-                        for file_name in os.listdir(dir_path)
-                        if file_name.endswith(".csv")])
+def merge_dfs(dir_path: str, pattern: re.Pattern = None) -> pd.DataFrame:
+    
+    if pattern:
+        file_paths = sorted([os.path.join(dir_path, file_name) 
+                            for file_name in os.listdir(dir_path)
+                            if re.match(pattern, file_name)])
+    else:
+        file_paths = sorted([os.path.join(dir_path, file_name) for file_name in os.listdir(dir_path)])
 
     if not file_paths:
         raise FileNotFoundError(f"No files found in {dir_path}")
