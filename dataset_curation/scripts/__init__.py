@@ -3,6 +3,7 @@ from .mining_utils import *
 from .cleaning_utils import *
 from .feature_engineering_utils import *
 from .embedding_utils import *
+from .logging import configure_logging
 
 
 __all__ = [
@@ -10,7 +11,9 @@ __all__ = [
     "recommended_fields_example1",
     "recommended_fields_example2",
     "ids_from_tsv",
+    "unirefs_from_multiple_files",
     "retrieve_fields_for_unirefs",
+    "process_uniref_batches",
     # cleaning utils
     "clean_col",
     "clean_all_cols",
@@ -23,4 +26,6 @@ __all__ = [
     "LARGE_OPENAI_MODEL",
     "get_AAseq_model_and_tokenizer",
     "FreeTXTEmbedder"
+    # logging
+    "configure_logging"
 ]
