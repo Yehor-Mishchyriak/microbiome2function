@@ -1,13 +1,10 @@
 # TASKS:
 feature_preprocessing:
 [] "Domain [FT]" :
-    (X) regex Domain AA sequence extraction -> () embedding via ProtT5
+    (X) regex Domain AA sequence extraction -> (X) embedding via ProtT5
 
 [] "Domain [CC]" :
-    (X) regex Free-text extraction -> () embedding via openai text-embedding-3-large
-
-[] "Protein families":
-    (X) regex fam extraction -> () dimensionaly reduction via Pfam clans / superfamily hierarchy -> () embed as k-hot
+    (X) regex Free-text extraction -> (X) embedding via openai text-embedding-3-large
 
 [] "Gene Ontology (molecular function)" :
     (X) regex extract GO -> () dimensionaly reduction via GO DAG -> () embed as k-hot"

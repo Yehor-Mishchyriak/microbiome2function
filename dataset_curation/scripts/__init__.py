@@ -20,6 +20,7 @@ __all__ = [
     "clean_all_cols",
     # feature engineering utils
     "process_ft_domain",
+    "embed_freetxt",
     # embedding utils
     "ESM2",
     "PROTT5",

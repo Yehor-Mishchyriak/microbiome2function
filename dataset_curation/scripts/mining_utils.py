@@ -7,7 +7,7 @@ from numpy import nan
 import os
 import time
 import io
-from typing import List
+from typing import List, Union
 import re
 import logging
 from math import ceil
@@ -205,7 +205,7 @@ def process_uniref_batches(uniref_ids: List[str], fields: List[str], batch_size=
         
     return save_to_dir
         
-def merge_dfs(dir_path: str, pattern: re.Pattern = None) -> pd.DataFrame:
+def merge_dfs(dir_path: str, pattern: re.Pattern = None, save2file_path: str = None) -> Union[None, pd.DataFrame]:
     
     if pattern:
         file_paths = sorted([os.path.join(dir_path, file_name) 
@@ -219,8 +219,12 @@ def merge_dfs(dir_path: str, pattern: re.Pattern = None) -> pd.DataFrame:
 
     dfs = [pd.read_csv(fp) for fp in file_paths]
     merged = pd.concat(dfs, ignore_index=True)
-    merged.set_index("Entry", inplace=True, drop=True)
 
+    if save2file_path:
+        merged.to_parquet(save2file_path, index=False, compression="snappy") # parquet is more space efficient than csv
+        return
+    
+    merged.set_index("Entry", inplace=True, drop=True)
     return merged
 
 

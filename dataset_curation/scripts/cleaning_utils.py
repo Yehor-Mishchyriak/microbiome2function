@@ -110,13 +110,14 @@ def _clean_col_helper(col_name: str, apply_norm: bool = True, apply_strip_pubmed
     return _inner
 
 def clean_col(df: pd.DataFrame, col_name: str) -> None:
-    df[col_name] = df[col_name].apply(_clean_col_helper(col_name))
+    df[col_name] = df[col_name].map(_clean_col_helper(col_name))
 
-def clean_all_cols(df: pd.DataFrame) -> pd.DataFrame:
-    new_df = df.copy(deep=True)
-    for col_name in new_df.columns:
-        clean_col(new_df, col_name)
-    return new_df
+def clean_all_cols(df: pd.DataFrame, inplace: bool = False) -> pd.DataFrame:
+    if not inplace:
+        df = df.copy(deep=True)
+    for col_name in df.columns:
+        clean_col(df, col_name)
+    return df
 
 
 __all__ = [
