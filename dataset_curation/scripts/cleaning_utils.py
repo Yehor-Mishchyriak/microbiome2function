@@ -109,7 +109,8 @@ def _clean_col_helper(col_name: str, apply_norm: bool = True, apply_strip_pubmed
     return _inner
 
 def clean_col(df: pd.DataFrame, col_name: str) -> None:
-    df[col_name] = df[col_name].map(_clean_col_helper(col_name))
+    cleaned_series = df[col_name].map(_clean_col_helper(col_name))
+    df.loc[:, col_name] = cleaned_series
 
 def clean_all_cols(df: pd.DataFrame, inplace: bool = False) -> pd.DataFrame:
     if not inplace:

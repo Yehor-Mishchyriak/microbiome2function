@@ -78,14 +78,14 @@ def embed_ft_domains(df: pd.DataFrame, embedder: AAChainEmbedder, drop_redundant
             return []
         return _get_domain_sequences(dom, row["Sequence"])
     
-    df["tmp_domain_seqs"] = df.apply(extract_or_empty, axis=1)
+    df.loc[:, "tmp_domain_seqs"] = df.apply(extract_or_empty, axis=1)
     
     # embed + max pool into one vector
-    df["domain_embedding"] = df["tmp_domain_seqs"].apply(_pool_domain_embeddings, embedder=embedder)
+    df.loc[:, "Domain [FT]"] = df.loc[:, "tmp_domain_seqs"].apply(_pool_domain_embeddings, embedder=embedder)
     
     # drop raw columns if desired
     if drop_redundant_cols:
-        df = df.drop(columns=["Sequence", "tmp_domain_seqs", "Domain [FT]"])
+        df = df.drop(columns=["Sequence", "tmp_domain_seqs"], inplace=inplace)
     
     return df
 
@@ -112,7 +112,7 @@ def embed_freetxt_cols(df: pd.DataFrame, cols: List[str], embedder: FreeTXTEmbed
 
     for col in cols:
         embedding_map = unique_vals2embs_map(df, col, embedder)
-        df[col] = df[col].map(lambda entry: embedding_map[entry] if isinstance(entry, str)
+        df.loc[:, col] = df.loc[:, col].map(lambda entry: embedding_map[entry] if isinstance(entry, str)
                               else max_pool([embedding_map[s] for s in entry]))
 
     return df
@@ -136,13 +136,13 @@ encode_ec = _ec_enc.process_ec
 # *-----------------------------------------------*
 
 def encode_multihot(df: pd.DataFrame, col: str, inplace: bool = False) -> Tuple[pd.DataFrame, Dict[str, int]]:
-    df_out = df if inplace else df.copy(deep=True)
+    df = df if inplace else df.copy(deep=True)
 
     encoder = MultiHotEncoder()
-    enc_info = encoder.encode(df_out[col])
-    df_out[col] = enc_info["encodings"].tolist()
+    enc_info = encoder.encode(df[col])
+    df.loc[:, col] = pd.Series(list(enc_info["encodings"]), index=df.index, dtype=object)
 
-    return df_out, enc_info["class_labels"]
+    return df, enc_info["class_labels"]
 
 
 __all__ = [

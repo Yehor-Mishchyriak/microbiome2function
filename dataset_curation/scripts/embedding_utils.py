@@ -192,7 +192,10 @@ class GOEncoder(MultiHotEncoder):
             raise ValueError("No valid GO IDs found to compute automatic depth.")
         return int(np.percentile(depths, coverage_target * 100))
 
-    def _collapse_to_depth(self, go_ids: Union[str, tuple], k: int) -> Tuple[str, ...]:
+    def _collapse_to_depth(self, go_ids: Union[str, tuple], k: int) -> Union[Tuple[str, ...], float]:
+        if pd.isna(go_ids):
+            return np.nan
+        
         if not isinstance(go_ids, tuple):
             go_ids = [go_ids]
 
@@ -208,9 +211,9 @@ class GOEncoder(MultiHotEncoder):
 
     def process_go(
         self, df: pd.DataFrame, col: str, depth: Union[None, int] = None,
-        coverage_target: float | None = None, inplace: bool = False):
+        coverage_target: Union[float, None] = None, inplace: bool = False):
 
-        df = df if inplace else df.copy()
+        df = df if inplace else df.copy(deep=True)
 
         if depth is None:
             if coverage_target is None:
@@ -219,35 +222,62 @@ class GOEncoder(MultiHotEncoder):
                 )
             depth = self._auto_depth(df[col], coverage_target)
 
-        collapsed = df[col].map(lambda terms: self._collapse_to_depth(terms, depth))
+        collapsed = df.loc[:, col].map(lambda terms: self._collapse_to_depth(terms, depth))
 
         enc_info = self.encode(collapsed)
-        df[col] = enc_info["encodings"].tolist()
+        df.loc[:, col] = pd.Series(list(enc_info["encodings"]), index=df.index, dtype=object)
         return df, enc_info["class_labels"]
 
 class ECEncoder(MultiHotEncoder):
     def __init__(self):
         super().__init__()
 
-    def _collapse_EC_to_level(self, EC: str, level: int):
-        ec_list = EC.split(".")
-        keep = ec_list[:level]
-        if any([not s.isdigit() for s in keep]):
-            return np.nan
-        else:
-            return ".".join(keep)
+    def __extract_ec_codes(self, EC: str):
+        present_entries = [i for i in EC.split(".") if i.isdigit()]
+        return present_entries
+    
+    def __depth(self, EC: str):
+        return len(self.__extract_ec_codes(EC))
+
+    def _auto_depth(self, series: pd.Series, coverage_target: float = 0.8) -> int:
+        depths = [
+            self.__depth(ec)
+            for terms in series.dropna()
+            for ec in (terms if isinstance(terms, tuple) else (terms,))
+        ]
+        if not depths:
+            raise ValueError("No valid EC numbers found to compute automatic depth.")
+        return int(np.percentile(depths, coverage_target * 100))
+
+    def _collapse_to_depth_helper(self, EC: str, depth: int):
+        keep = self.__extract_ec_codes(EC)[:depth]
+        return ".".join(keep)
         
-    def _collapse_EC_entry_to_level(self, ECs: Union[str, tuple], level: int):
+    def _collapse_to_depth(self, ECs: Union[str, tuple], depth: int):
+        if pd.isna(ECs):
+            return np.nan
         if not isinstance(ECs, tuple):
             ECs = [ECs]
-        return tuple([self._collapse_EC_to_level(ec, level) for ec in ECs])
+        return tuple([self._collapse_to_depth_helper(ec, depth) for ec in ECs])
 
-    def process_ec(self, df: pd.DataFrame, level: int, inplace=False):
+    def process_ec(self, df: pd.DataFrame, depth: Union[int, None] = None,
+                coverage_target: Union[float, None] = None, inplace=False):
         df = df if inplace else df.copy(deep=True)
-        collapsed = df["EC number"].map(lambda ecs: self._collapse_EC_entry_to_level(ecs, level))
+
+        col = "EC number"
+        if depth is None:
+            if coverage_target is None:
+                raise ValueError(
+                    "Either `depth` or `coverage_target` must be provided."
+                )
+            depth = self._auto_depth(df[col], coverage_target)
+
+        collapsed = df.loc[:, col].map(lambda terms: self._collapse_to_depth(terms, depth))
+
         enc_info = self.encode(collapsed)
-        df["EC number"] = enc_info["encodings"].tolist()
+        df.loc[:, col] = pd.Series(list(enc_info["encodings"]), index=df.index, dtype=object)
         return df, enc_info["class_labels"]
+
 
 __all__ = [
     "MultiHotEncoder",
