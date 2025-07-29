@@ -112,7 +112,8 @@ def embed_freetxt_cols(df: pd.DataFrame, cols: List[str], embedder: FreeTXTEmbed
 
     for col in cols:
         embedding_map = unique_vals2embs_map(df, col, embedder)
-        df[col] = df[col].map(lambda entry: max_pool([embedding_map(s) for s in entry]))
+        df[col] = df[col].map(lambda entry: embedding_map[entry] if isinstance(entry, str)
+                              else max_pool([embedding_map[s] for s in entry]))
 
     return df
 
@@ -131,26 +132,25 @@ _ec_enc = ECEncoder()
 encode_ec = _ec_enc.process_ec
 
 # *-----------------------------------------------*
-#                     rhea
+#               cc_cofactor & rhea
 # *-----------------------------------------------*
 
-_rhea_enc = MultiHotEncoder()
-encode_rhea = _rhea_enc.encode
+def encode_multihot(df: pd.DataFrame, col: str, inplace: bool = False) -> Tuple[pd.DataFrame, Dict[str, int]]:
+    df_out = df if inplace else df.copy(deep=True)
 
-# *-----------------------------------------------*
-#                   cc_cofactor
-# *-----------------------------------------------*
+    encoder = MultiHotEncoder()
+    enc_info = encoder.encode(df_out[col])
+    df_out[col] = enc_info["encodings"].tolist()
 
-_cofactor_enc = MultiHotEncoder()
-encode_cofactor = _cofactor_enc.encode
+    return df_out, enc_info["class_labels"]
+
 
 __all__ = [
     "embed_ft_domains",
     "embed_freetxt_cols",
     "encode_go",
     "encode_ec",
-    "encode_rhea",
-    "encode_cofactor"
+    "encode_multihot"
 ]
 
 if __name__ == "__main__":

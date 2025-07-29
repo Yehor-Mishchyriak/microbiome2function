@@ -154,9 +154,25 @@ class MultiHotEncoder:
         self.mlb = MultiLabelBinarizer()
 
     def encode(self, sequences: pd.Series):
-        sequences = sequences.fillna(tuple())
-        enc = self.mlb.fit_transform(sequences)
-        return {"encodings": enc, "class_labels": {c: i for i, c in enumerate(self.mlb.classes_)}}
+        # record nans
+        nan_mask = sequences.isna()
+
+        # replace NaNs with an empty iterable for now
+        # and guarantee everything is an iterable
+        tmp = sequences.where(~nan_mask, other="")
+        tmp = tmp.map(lambda x: x if isinstance(x, tuple) else (x,) if x else ())
+
+        enc = self.mlb.fit_transform(tmp)
+
+        # convert to object dtype to be able to store NaNs,
+        # then restore NaNs where they originally were
+        enc = enc.astype(object)
+        enc[nan_mask.values] = np.nan
+
+        return {
+            "encodings": enc,
+            "class_labels": {c: i for i, c in enumerate(self.mlb.classes_)}
+        }
 
 class GOEncoder(MultiHotEncoder):
     def __init__(self, obo_path: str):
@@ -164,6 +180,17 @@ class GOEncoder(MultiHotEncoder):
         if not os.path.exists(obo_path):
             raise FileNotFoundError(f"OBO not found: {obo_path}")
         self.godag = GODag(obo_path)
+
+    def _auto_depth(self, series: pd.Series, coverage_target: float = 0.8) -> int:
+        depths = [
+            self.godag[gid].depth
+            for terms in series.dropna()
+            for gid in (terms if isinstance(terms, tuple) else (terms,))
+            if gid in self.godag
+        ]
+        if not depths:
+            raise ValueError("No valid GO IDs found to compute automatic depth.")
+        return int(np.percentile(depths, coverage_target * 100))
 
     def _collapse_to_depth(self, go_ids: Union[str, tuple], k: int) -> Tuple[str, ...]:
         if not isinstance(go_ids, tuple):
@@ -174,14 +201,26 @@ class GOEncoder(MultiHotEncoder):
             if gid not in self.godag:
                 continue
             node = self.godag[gid]
-            ancestors  = set(gid, *node.get_all_parents())
+            ancestors = {gid}.union(node.get_all_parents())
             at_k = {n for n in ancestors if self.godag[n].depth == k}
             kept.update(at_k if at_k else {min(ancestors, key=lambda x: self.godag[x].depth)})
         return tuple(kept)
 
-    def process_go(self, df: pd.DataFrame, col: str, depth: int, inplace=False):
+    def process_go(
+        self, df: pd.DataFrame, col: str, depth: Union[None, int] = None,
+        coverage_target: float | None = None, inplace: bool = False):
+
         df = df if inplace else df.copy()
+
+        if depth is None:
+            if coverage_target is None:
+                raise ValueError(
+                    "Either `depth` or `coverage_target` must be provided."
+                )
+            depth = self._auto_depth(df[col], coverage_target)
+
         collapsed = df[col].map(lambda terms: self._collapse_to_depth(terms, depth))
+
         enc_info = self.encode(collapsed)
         df[col] = enc_info["encodings"].tolist()
         return df, enc_info["class_labels"]
@@ -201,13 +240,13 @@ class ECEncoder(MultiHotEncoder):
     def _collapse_EC_entry_to_level(self, ECs: Union[str, tuple], level: int):
         if not isinstance(ECs, tuple):
             ECs = [ECs]
-        return tuple([self._collapse_EC_to_level(ec) for ec in ECs])
+        return tuple([self._collapse_EC_to_level(ec, level) for ec in ECs])
 
     def process_ec(self, df: pd.DataFrame, level: int, inplace=False):
         df = df if inplace else df.copy(deep=True)
-        collapsed = df["EC Number"].map(lambda ecs: self._collapse_EC_entry_to_level(ecs, level))
+        collapsed = df["EC number"].map(lambda ecs: self._collapse_EC_entry_to_level(ecs, level))
         enc_info = self.encode(collapsed)
-        df["EC Number"] = enc_info["encodings"].tolist()
+        df["EC number"] = enc_info["encodings"].tolist()
         return df, enc_info["class_labels"]
 
 __all__ = [

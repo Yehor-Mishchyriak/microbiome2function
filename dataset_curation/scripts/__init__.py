@@ -23,8 +23,7 @@ __all__ = [
     "embed_freetxt_cols",
     "encode_go",
     "encode_ec",
-    "encode_rhea",
-    "encode_cofactor",
+    "encode_multihot",
     # embedding utils
     "ESM2",
     "PROTT5",
