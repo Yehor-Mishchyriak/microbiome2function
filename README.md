@@ -96,6 +96,7 @@ scripts.encode_multihot(df, "Cofactor", inplace=True)
 ```
 
 ## Repository Structure
+```graphql
 dataset_curation/
 ├── scripts/
 │   ├── mining_utils.py           # API batching & data retrieval
@@ -108,6 +109,7 @@ dataset_curation/
 ├── job.sh                        # SLURM job script (example; alter in the way that fits your case)
 ├── notebooks/
     └── data_processing.ipynb     # notebook example of data preparation (end-to-end)
+```
 
 ## Why This Matters
 This pipeline solves the biggest pain point in protein functional annotation projects:
