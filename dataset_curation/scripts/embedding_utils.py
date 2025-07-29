@@ -34,9 +34,7 @@ class AAChainEmbedder:
 
     @torch.no_grad()
     def embed_sequence(self, seq: str) -> np.ndarray:
-        if self.is_prott5:
-            seq = " ".join(seq) # ProtT5 expects spaces
-
+        seq = " ".join(seq)
         toks = self.tokenizer(seq, return_tensors="pt").to(self.model.device)
         hidden = self.model(**toks).last_hidden_state # (batch=1, seq_len, hidden_dim), so (seq_len, hidden_dim) basically
         # |  drop special tokens -> (seq_len-2, hidden_dim)
@@ -49,8 +47,7 @@ class AAChainEmbedder:
         if not seqs:
             return []
 
-        if self.is_prott5:
-            seqs = [" ".join(s) for s in seqs]
+        seqs = [" ".join(s) for s in seqs]
 
         out: list[np.ndarray] = []
 
@@ -62,6 +59,7 @@ class AAChainEmbedder:
                 return_tensors="pt",
                 padding=True,
                 truncation=True,
+                max_length=1024
             ).to(self.model.device)
 
             hidden = self.model(**toks).last_hidden_state
@@ -94,7 +92,7 @@ class FreeTXTEmbedder:
             raise ValueError(f"caching_mode must be one of {self.CACHING_MODES}")
 
         self.client = OpenAI(api_key=api_key)
-        self.model = model
+        self.model = FreeTXTEmbedder.MODELS[model]
         self.cache_file_path = cache_file_path
         self.caching_mode = caching_mode
 
@@ -161,9 +159,8 @@ class MultiHotEncoder:
         return {"encodings": enc, "class_labels": {c: i for i, c in enumerate(self.mlb.classes_)}}
 
 class GOEncoder(MultiHotEncoder):
-    def __init__(self, obo_path: Union[str, None] = None):
+    def __init__(self, obo_path: str):
         super().__init__()
-        obo_path = obo_path if obo_path is not None else "dataset_curation/dependencies/go-basic.obo"
         if not os.path.exists(obo_path):
             raise FileNotFoundError(f"OBO not found: {obo_path}")
         self.godag = GODag(obo_path)

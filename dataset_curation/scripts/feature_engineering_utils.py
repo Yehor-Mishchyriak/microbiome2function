@@ -7,11 +7,9 @@ from .embedding_utils import (FreeTXTEmbedder,
                               GOEncoder,
                               ECEncoder,
                               MultiHotEncoder)
+import os
 
-__all__ = list()
-def export(func):
-    __all__.append(func.__name__)
-    return func 
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # *-----------------------------------------------*
 #                      UTILS
@@ -69,7 +67,6 @@ def _pool_domain_embeddings(seqs: List[str], embedder: AAChainEmbedder) -> Union
         # pool the embedding with largest L2 norm
         return max_pool(embs)
 
-@export
 def embed_ft_domains(df: pd.DataFrame, embedder: AAChainEmbedder, drop_redundant_cols: bool = True, inplace=False) -> pd.DataFrame:
     if not inplace:
         df = df.copy(deep=True)
@@ -108,7 +105,6 @@ def unique_vals2embs_map(df: pd.DataFrame, col: str, embedder: FreeTXTEmbedder):
 
     return val2emb_map
 
-@export
 def embed_freetxt_cols(df: pd.DataFrame, cols: List[str], embedder: FreeTXTEmbedder, inplace=False) -> pd.DataFrame:
     
     if not inplace:
@@ -124,9 +120,8 @@ def embed_freetxt_cols(df: pd.DataFrame, cols: List[str], embedder: FreeTXTEmbed
 #                   go_mf & go_bp
 # *-----------------------------------------------*
 
-_go_enc = GOEncoder()
+_go_enc = GOEncoder(os.path.join(SCRIPT_DIR, "..", "dependencies", "go-basic.obo"))
 encode_go = _go_enc.process_go
-export(encode_go)
 
 # *-----------------------------------------------*
 #                       ec
@@ -134,7 +129,6 @@ export(encode_go)
 
 _ec_enc = ECEncoder()
 encode_ec = _ec_enc.process_ec
-export(encode_ec)
 
 # *-----------------------------------------------*
 #                     rhea
@@ -142,7 +136,6 @@ export(encode_ec)
 
 _rhea_enc = MultiHotEncoder()
 encode_rhea = _rhea_enc.encode
-export(encode_rhea)
 
 # *-----------------------------------------------*
 #                   cc_cofactor
@@ -150,8 +143,15 @@ export(encode_rhea)
 
 _cofactor_enc = MultiHotEncoder()
 encode_cofactor = _cofactor_enc.encode
-export(encode_cofactor)
 
+__all__ = [
+    "embed_ft_domains",
+    "embed_freetxt_cols",
+    "encode_go",
+    "encode_ec",
+    "encode_rhea",
+    "encode_cofactor"
+]
 
 if __name__ == "__main__":
     pass

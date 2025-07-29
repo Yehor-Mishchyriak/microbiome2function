@@ -19,8 +19,12 @@ __all__ = [
     "clean_col",
     "clean_all_cols",
     # feature engineering utils
-    "process_ft_domain",
-    "embed_freetxt",
+    "embed_ft_domains",
+    "embed_freetxt_cols",
+    "encode_go",
+    "encode_ec",
+    "encode_rhea",
+    "encode_cofactor",
     # embedding utils
     "ESM2",
     "PROTT5",
