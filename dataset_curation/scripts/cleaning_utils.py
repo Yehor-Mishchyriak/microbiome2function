@@ -6,8 +6,7 @@ import re
 # *-----------------------------------------------*
 
 _info_extr_patterns = {
-    "Domain [FT]" : re.compile(r'DOMAIN\s(\d+..\d+)'), # <-- AA-seq fragment;
-    # ^^^ use 're.compile(r'/note="([^"]+)"')' to extract human-readable description of the domain
+    "Domain [FT]" : re.compile(r'DOMAIN\s(\d+..\d+)'),
     "Domain [CC]" : re.compile(r"DOMAIN:\s(.*?)(?=\s\{|$)"),
     "Protein families": re.compile(r"(\w.*?)(?=;|$)"),
     "Gene Ontology (molecular function)" : re.compile(r"\[(GO:\d{7})\]"),
@@ -20,7 +19,7 @@ _info_extr_patterns = {
     "Rhea ID" : re.compile(r"RHEA:(\d*?)(?=\s|$)"),
     "Cofactor" : re.compile(r"Name=(.*?)(?=;|$)"),
     "Activity regulation" : re.compile(r"ACTIVITY REGULATION:\s*(.+?\S)(?=\s*\{|$)")
-} # note, I our set we also have the AA sequences of proteins, but no extraction is needed there
+}
 
 _inline_re = re.compile(r"\s*\(PubMed:\d+(?:\s*,\s*PubMed:\d+)*\)")
 

@@ -2,23 +2,36 @@ import re
 import pandas as pd
 import numpy as np
 from typing import Union, List, Tuple, Dict
-from .embedding_utils import FreeTXTEmbedder, AAChainEmbedder, EncodeGO
+from .embedding_utils import FreeTXTEmbedder, AAChainEmbedder, GOEncoder
+
+__all__ = list()
+def export(func):
+    __all__.append(func.__name__)
+    return func 
 
 # *-----------------------------------------------*
 #                      UTILS
 # *-----------------------------------------------*
 
+def max_pool(embeddings: List[np.ndarray]) -> np.ndarray:
+    if not embeddings:
+        raise ValueError("Cannot max pool empty list of embeddings")
+    
+    if len(embeddings) == 1:
+        return embeddings[0]
+    
+    # calculate L2 norm for each embedding
+    norms = [np.linalg.norm(emb) for emb in embeddings]
+    
+    # return the embedding with maximum norm
+    max_idx = np.argmax(norms)
+    return embeddings[max_idx]
 
 # *-----------------------------------------------*
-# ft_domain <-- embedding all the rows in a df
+#                   ft_domain
 # *-----------------------------------------------*
 
-# HELPERS FOR DOMAIN SLICING:
-
-def _extract_aa_ranges(domain_entry: Union[str, Tuple[str, ...]]) -> List[Tuple[int,int]]:
-    """
-    ("54..144", "224..288") → [(53,144), (223,288)]
-    """
+def _domain_aa_ranges(domain_entry: Union[str, Tuple[str, ...]]) -> List[Tuple[int,int]]:
 
     if isinstance(domain_entry, str):
         entries = [domain_entry]
@@ -35,50 +48,48 @@ def _extract_aa_ranges(domain_entry: Union[str, Tuple[str, ...]]) -> List[Tuple[
     return ranges
 
 def _get_domain_sequences(domain_entry: str, full_seq: str) -> List[str]:
-    """
-    Pull out the substring for each domain range
-    """
-    ranges = _extract_aa_ranges(domain_entry)
+    ranges = _domain_aa_ranges(domain_entry)
     return [full_seq[s:e] for s, e in ranges]
 
-# embed domains' AA sequences
 def _pool_domain_embeddings(seqs: List[str], embedder: AAChainEmbedder) -> Union[np.ndarray, float]:
     if not seqs:
-        # if no annotated domains, return a zero vector
+        # if no annotated domains, return NaN
         return np.nan
-    embs = [embedder.embed_sequence(s) for s in seqs] # list of [hidden_dim]
     
-    # stack into shape [N, hidden_dim] -> mean‑pool over the first axis -> [hidden_dim]
-    return embs[0] if len(embs) == 1 else embs
+    # embed each domain sequence
+    embs = embedder.embed_sequences(seqs)  # list of [hidden_dim]
+    
+    if len(embs) == 1:
+        return embs[0]
+    else:
+        # pool the embedding with largest L2 norm
+        return max_pool(embs)
 
-# apply to the whole 'Domain [FT]' col
-def process_ft_domain(df: pd.DataFrame, embedder: AAChainEmbedder, drop_redundant_cols: bool = True, inplace=False) -> pd.DataFrame:
+@export
+def embed_ft_domains(df: pd.DataFrame, embedder: AAChainEmbedder, drop_redundant_cols: bool = True, inplace=False) -> pd.DataFrame:
     if not inplace:
         df = df.copy(deep=True)
-
+    
     # build list of domain sequences, with empty list for NaN
     def extract_or_empty(row):
         dom = row["Domain [FT]"]
         if pd.isna(dom):
             return []
         return _get_domain_sequences(dom, row["Sequence"])
-
+    
     df["tmp_domain_seqs"] = df.apply(extract_or_empty, axis=1)
-
-    # embed + pool into one vector
+    
+    # embed + max pool into one vector
     df["domain_embedding"] = df["tmp_domain_seqs"].apply(_pool_domain_embeddings, embedder=embedder)
-
+    
     # drop raw columns if desired
     if drop_redundant_cols:
         df = df.drop(columns=["Sequence", "tmp_domain_seqs", "Domain [FT]"])
-
+    
     return df
 
 # *-----------------------------------------------*
 # cc_domain, cc_function, cc_catalytic_activity
-# ^^^ unique values extraction, embedding, then
-# mapping embeddings to values from the df.
-# It's less costly (fewer API requests)
 # *-----------------------------------------------*
 
 def unique_vals2embs_map(df: pd.DataFrame, col: str, embedder: FreeTXTEmbedder):
@@ -93,28 +104,25 @@ def unique_vals2embs_map(df: pd.DataFrame, col: str, embedder: FreeTXTEmbedder):
 
     return val2emb_map
 
-# note: this will fail for tuples
-# and also, I am not sure yet what to do with tuples of text.
-# I think I may need to embed multiple functional annotation fields at once, because if I embed them separately,
-# then I am not sure how to combine them, though max-pooling seems like the easiest approach (averaging will lose
-# the meanings in case those functional annotations discuss distinct domains with distinct functions).
-# Ideally, I would use attention for these and let the training decide what weights to use and then do "weighted-average-pooling".
-def embed_freetxt_cols(df: pd.DataFrame, cols: List[str],
-                    embedding_map: Dict[str, np.ndarray], inplace=False) -> pd.DataFrame:
+@export
+def embed_freetxt_cols(df: pd.DataFrame, cols: List[str], embedder: FreeTXTEmbedder, inplace=False) -> pd.DataFrame:
+    
     if not inplace:
         df = df.copy(deep=True)
 
     for col in cols:
-        df[col] = df[col].map(embedding_map)
+        embedding_map = unique_vals2embs_map(df, col, embedder)
+        df[col] = df[col].map(lambda entry: max_pool([embedding_map(s) for s in entry]))
 
     return df
 
-
 # *-----------------------------------------------*
-#                   go_f & go_p
+#                   go_mf & go_bp
 # *-----------------------------------------------*
 
-
+_goenc = GOEncoder()
+encode_go = _goenc.process_go
+export(encode_go)
 
 # *-----------------------------------------------*
 #                       ec
@@ -127,11 +135,9 @@ def embed_freetxt_cols(df: pd.DataFrame, cols: List[str],
 # *-----------------------------------------------*
 
 
-
 # *-----------------------------------------------*
 #                     rhea
 # *-----------------------------------------------*
-
 
 
 # *-----------------------------------------------*
@@ -139,21 +145,5 @@ def embed_freetxt_cols(df: pd.DataFrame, cols: List[str],
 # *-----------------------------------------------*
 
 
-
-# *-----------------------------------------------*
-#                    sequence
-# *-----------------------------------------------*
-
-
-
-# *-----------------------------------------------*
-#                      API
-# *-----------------------------------------------*
-
-# BTW:
-#-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-# df.apply(fn, axis=1) → “I need to look at the whole row.”
-# series.apply(fn) → “I need to call this function on each element of the series (and I have extra args).”
-# series.map(fn or dict) → “I need a simple one‑to‑one mapping on this series.”
-# df.applymap(fn) → “I need to change every single cell with the same function.”
-#-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+if __name__ == "__main__"
+    pass

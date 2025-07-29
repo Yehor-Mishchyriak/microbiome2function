@@ -8,7 +8,7 @@ import atexit
 import torch
 from sklearn.preprocessing import MultiLabelBinarizer
 from goatools.obo_parser import GODag
-
+import re
 
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 #                           DENSE EMBEDDINGS
@@ -45,14 +45,36 @@ class AAChainEmbedder:
         emb = hidden[0, 1:-1].mean(dim=0) 
         return emb.cpu().numpy()
 
+    @torch.no_grad()
+    def embed_sequences(self, seqs: List[str], batch_size: int = 32) -> List[np.ndarray]:
+        if not seqs:
+            return []
 
-# NOTE: this one is not parallelism-safe yet (I didn't bother including threading here as I didn't need to)
-# But, if one ever does, be sure to use locks so that a thread writing to the cache acquires a lock and then releases it.
-# Another thing:
-# We load cache once, buffer in a dict, then write exactly one Parquet file at exit;
-# The reason we don't use .csv is because it'd serialize embeddings into strings resulting into huge files.
-# By the way, that is why for the final dataset, we'll either use .csv storing paths to .npy's, or parquet again.
-# If curios: https://parquet.apache.org/; https://pandas.pydata.org/docs/reference/api/pandas.read_parquet.html.
+        if self.is_prott5:
+            seqs = [" ".join(s) for s in seqs]
+
+        out: list[np.ndarray] = []
+
+        for start in range(0, len(seqs), batch_size):
+            chunk = seqs[start:start + batch_size]
+
+            toks = self.tokenizer(
+                chunk,
+                return_tensors="pt",
+                padding=True,
+                truncation=True,
+            ).to(self.model.device)
+
+            hidden = self.model(**toks).last_hidden_state
+            mask   = toks["attention_mask"]
+
+            for i in range(len(chunk)):
+                pos = mask[i].nonzero().squeeze(1)
+                body = pos[1:-1] if pos.size(0) > 2 else pos
+                emb  = hidden[i, body].mean(dim=0)
+                out.append(emb.cpu().numpy())
+
+        return out
 
 class FreeTXTEmbedder:
     MODELS = {
@@ -79,8 +101,6 @@ class FreeTXTEmbedder:
 
         self.cache_map: dict[str, np.ndarray] = {}
         if cache_file_path and caching_mode == "APPEND" and os.path.exists(cache_file_path):
-            if os.path.getsize(cache_file_path) > 1_000_000_000:
-                raise RuntimeError("Cache >1 GB - refuse to load")
             df = pd.read_parquet(cache_file_path)
             self.cache_map = {t: np.array(e) for t, e in zip(df["text"], df["embedding"])}
 
@@ -141,7 +161,7 @@ class MultiHotEncoder:
         enc = self.mlb.fit_transform(sequences)
         return {"encodings": enc, "class_labels": {c: i for i, c in enumerate(self.mlb.classes_)}}
 
-class EncodeGO(MultiHotEncoder):
+class GOEncoder(MultiHotEncoder):
     def __init__(self, obo_path: Union[str, None] = None):
         super().__init__()
         obo_path = obo_path if obo_path is not None else "dataset_curation/dependencies/go-basic.obo"
@@ -167,6 +187,33 @@ class EncodeGO(MultiHotEncoder):
         df[col] = enc_info["encodings"].tolist()
         return df, enc_info["class_labels"]
 
+class EncodeEC(MultiHotEncoder):
+    def __init__(self):
+        self.mlb = MultiLabelBinarizer()
+
+    def collapse_to_level(self, ec_str: str, level: int):
+        ec_list = ec_str.split(".")
+        keep = ec_list[:level]
+        if any([ bool(re.match(r"[^\d]*", s)) for s in keep]):
+            return np.nan
+        else:
+            return ".".join(keep)
+        
+    def process_ec(self, df: pd.DataFrame, level: int, inplace=False):
+        df = df if inplace else df.copy(deep=True)
+        collapsed = df["EC Number"].map(lambda ecs: self.collapse_to_level(ecs, level))
+        enc_info = self.encode(collapsed)
+        df["EC Number"] = enc_info["encodings"].tolist()
+        return df, enc_info["class_labels"]
+
+
+__all__ = [
+    "MultiHotEncoder",
+    "GOEncoder",
+    "FreeTXTEmbedder",
+    "AAChainEmbedder",
+    "EncodeEC"
+]
 
 if __name__ == "__main__":
     pass
