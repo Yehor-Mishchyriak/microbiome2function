@@ -5,6 +5,21 @@ from scripts import (recommended_fields_example2,
 import re
 import os
 
+_2normalizeORnot = {
+    "Domain [FT]" : False,
+    "Domain [CC]" : True,
+    "Protein families": False,
+    "Gene Ontology (molecular function)" : False,
+    "Gene Ontology (biological process)" : False,
+    "Interacts with" : False,
+    "Function [CC]" : True,
+    "Catalytic activity" : False,
+    "EC number" : False,
+    "Pathway" : True,
+    "Rhea ID" : False,
+    "Cofactor" : False,
+    "Activity regulation" : True
+}
 
 gene_fam_files_dir = os.getenv("SAMPLE_FILES")
 output_dir = os.getenv("SAVE_DATA_TO_DIR")

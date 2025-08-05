@@ -2,25 +2,19 @@
 *
 
 # BUT
-!dataset_curation/
-!dataset_curation/*.py
-!dataset_curation/for_hpc_use/
-!dataset_curation/for_hpc_use/*.py
-!dataset_curation/for_hpc_use/*.sh
-!dataset_curation/notebooks/
-!dataset_curation/notebooks/*.ipynb
-!dataset_curation/scripts/
-!dataset_curation/scripts/*.py
-!dataset_curation/scripts/tests/
-!dataset_curation/scripts/tests/*.py
-!dataset_curation/scripts/tests/examples/
-!dataset_curation/scripts/tests/examples/*.json
-# ---------------------------------------------------------------
-!ML/
-!ML/*.py
-!ML/*.ipynb
-# ---------------------------------------------------------------
-!util.py
+!M2F/
+!M2F/*.py
+!M2F/dependencies/
+!M2F/dependencies/*
+# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+!application/
+!application/dataset_curation/
+!application/dataset_curation/*.py
+!application/dataset_curation/*.sh
+!application/model/
+!application/model/*.py
+!application/model/*.ipynb
+# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 !.gitignore
 !README.MD
 !requirements.txt
