@@ -15,7 +15,6 @@ from sklearn.preprocessing import MultiLabelBinarizer
 import numpy as np
 import pandas as pd
 from goatools.obo_parser import GODag
-import psutil
 
 # *-----------------------------------------------*
 #                      GLOBALS
@@ -61,6 +60,10 @@ class AAChainEmbedder:
         dtype: Union[torch.dtype, None] = None,
         representation_layer: Union[int, str] = "second_to_last",
     ):
+        _logger.info(
+            "Initialising AAChainEmbedder(model_key=%s, device=%s, dtype=%s, repr_layer=%s)",
+            model_key, device, dtype, representation_layer,
+        )
         if model_key not in self.HF_MODELS:
             raise ValueError(f"`model_key` must be one of {list(self.HF_MODELS)}")
 
@@ -86,6 +89,9 @@ class AAChainEmbedder:
         )
         if not (0 <= self.repr_idx < n_layers):
             raise ValueError(f"representation_layer must be in [0,{n_layers-1}] or a valid alias")
+        
+        _logger.debug("AAChainEmbedder initialised: repr_idx=%d, max_len=%d", self.repr_idx,
+                      self.model.config.max_position_embeddings)
 
     # ------------------------------------------------------------
     @torch.no_grad()
@@ -107,13 +113,16 @@ class AAChainEmbedder:
             always on CPU for downstream neutrality.
         """
         if not seqs:
+            _logger.info("No sequences provided; returning empty list.")
             return []
 
+        _logger.info("Embedding %d sequences (batch_size=%d)", len(seqs), batch_size)
         out: list[np.ndarray] = []
         max_len = self.model.config.max_position_embeddings
 
         for start in range(0, len(seqs), batch_size):
             chunk = seqs[start : start + batch_size]
+            _logger.debug("Processing chunk [%d:%d] of size %d", start, start + batch_size, len(chunk))
 
             for s in chunk:
                 if len(s) > max_len - 2:   # minus BOS/EOS
@@ -150,7 +159,8 @@ class AAChainEmbedder:
             for i in range(hidden_states.size(0)):
                 emb = hidden_states[i][keep_mask[i]].mean(0)
                 out.append(emb.to(dtype=torch.float32, device="cpu").numpy())
-
+        
+        _logger.info("Finished embedding; produced %d vectors", len(out))
         return out
 
 
@@ -189,7 +199,9 @@ class FreeTXTEmbedder:
         cache_file_path: Union[str, None] = None,
         caching_mode: str = "NOT_CACHING", max_cache_size_kb: int = 1000
     ):
-
+        _logger.info("Initialising FreeTXTEmbedder(model=%s, caching_mode=%s, cache_path=%s)",
+                     model, caching_mode, cache_file_path)
+        
         if model not in self.MODELS:
             raise ValueError(f"model must be one of {list(self.MODELS)}")
         if caching_mode not in self.CACHING_MODES:
@@ -211,6 +223,7 @@ class FreeTXTEmbedder:
             self._conn.commit()
             atexit.register(self._conn.close)
             self._LRU_cache = OrderedDict()
+            _logger.debug("SQLite cache initialised at %s", cache_file_path)
         else:
             self._db = None
             self._LRU_cache = None
@@ -253,9 +266,11 @@ class FreeTXTEmbedder:
             INSERT OR REPLACE INTO embeddings VALUES (:text, :vec)
             """, {"text": s, "vec": emb.tobytes()})
         self._conn.commit()
+        _logger.debug("Stored sequence in SQLite cache: %s", s[:30])
 
     def __store_in_LRU(self, s: str, emb: np.ndarray):
         self._LRU_cache[s] = emb
+        _logger.debug("Stored sequence in LRU cache: %s", s[:30])
 
     # ---------PROTECTED---------
     def _lookup(self, s: str):
@@ -300,12 +315,14 @@ class FreeTXTEmbedder:
         Returns a list aligned with *seqs* of ``np.ndarray`` objects.
         Internally obeys OpenAI batch limits and fills the cache on misses.
         """
+        _logger.info("Embedding %d text entries (batch_size=%d)", len(seqs), batch_size)
         out = [None] * len(seqs)
         to_send, idx = [], []
 
         for i, s in enumerate(seqs):
             cached = self._lookup(s)
             if cached is not None:
+                _logger.debug("Cache hit for item %d", i)
                 out[i] = cached
             else:
                 to_send.append(s); idx.append(i)
@@ -313,6 +330,7 @@ class FreeTXTEmbedder:
         for start in range(0, len(to_send), batch_size):
             chunk  = to_send[start:start+batch_size]
             ichunk = idx[start:start+batch_size]
+            _logger.info("Requesting %d embeddings from OpenAI", len(chunk))
             resp   = self.client.embeddings.create(input=chunk, model=self.model)
             for s, i, emb in zip(chunk, ichunk, resp.data):
                 vec = np.asarray(emb.embedding, dtype=np.float32)
@@ -341,13 +359,16 @@ class MultiHotEncoder:
         ValueError
             If any element in *sequences* is not a ``tuple``.
         """
+        _logger.info("MultiHot-encoding %d entries", len(sequences))
         # ----checking-everything-is-tuple-----------------------------------
         if not sequences.map(lambda x: isinstance(x, tuple)).all():
             bad = sequences[~sequences.map(lambda x: isinstance(x, tuple))].index[:5]
+            _logger.error("Non-tuple entries detected at rows %s", list(bad))
             raise ValueError(f"Non-tuple entries detected at rows {list(bad)}")
         # -------------------------------------------------------------------
         self.mlb.fit(sequences)
         cls_to_idx = {c: i for i, c in enumerate(self.mlb.classes_)}
+        _logger.debug("Class-to-index map built with %d classes", len(cls_to_idx))
 
         encoded = [
             tuple(sorted(cls_to_idx[lbl] for lbl in seq)) for seq in sequences
@@ -370,6 +391,7 @@ class GOEncoder(MultiHotEncoder):
         super().__init__()
         if not os.path.exists(obo_path):
             raise FileNotFoundError(f"OBO not found: {obo_path}")
+        _logger.info("Loading GO DAG from %s", obo_path)
         self.godag = GODag(obo_path)
     
     # ---------PROTECTED---------
@@ -382,7 +404,9 @@ class GOEncoder(MultiHotEncoder):
         ]
         if not depths:
             raise ValueError("No valid GO IDs found to compute automatic depth.")
-        return int(np.percentile(depths, coverage_target * 100))
+        depth = int(np.percentile(depths, coverage_target * 100))
+        _logger.info("Auto-selected GO depth=%d (coverage_target=%.2f)", depth, coverage_target)
+        return depth
 
     def _collapse_to_depth(self, go_ids: Tuple[str], k: int) -> Tuple[str]:
         kept = set()
@@ -420,6 +444,7 @@ class GOEncoder(MultiHotEncoder):
         (DataFrame, Dict[str,int])
             The dataframe with encoded column, and the term→index map.
         """
+        _logger.info("Encoding GO terms in column '%s' (inplace=%s)", col_name, inplace)
         df = df if inplace else df.copy(deep=True)
 
         if depth is None:
@@ -465,7 +490,9 @@ class ECEncoder(MultiHotEncoder):
         ]
         if not depths:
             raise ValueError("No valid EC numbers found to compute automatic depth.")
-        return int(np.percentile(depths, coverage_target * 100))
+        depth = int(np.percentile(depths, coverage_target * 100))
+        _logger.info("Auto-selected EC depth=%d (coverage_target=%.2f)", depth, coverage_target)
+        return depth
 
     def _collapse_to_depth_helper(self, EC: str, depth: int):
         pieces = self.__extract_ec_codes(EC)[:depth]
@@ -485,6 +512,7 @@ class ECEncoder(MultiHotEncoder):
 
         Parameters mirror `GOEncoder.encode_go`.
         """
+        _logger.info("Encoding EC numbers in column '%s' (inplace=%s)", col_name, inplace)
         df = df if inplace else df.copy(deep=True)
 
         if depth is None:
@@ -515,6 +543,7 @@ def encode_multihot(df: pd.DataFrame, col: str, inplace: bool = False) -> Tuple[
     (DataFrame, Dict[str,int])
         Modified frame and the label vocabulary.
     """
+    _logger.info("One-shot multi-hot encoding for column '%s' (inplace=%s)", col, inplace)
     df = df if inplace else df.copy(deep=True)
 
     encoder = MultiHotEncoder()
