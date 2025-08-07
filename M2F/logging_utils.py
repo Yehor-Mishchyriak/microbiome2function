@@ -28,7 +28,7 @@ def configure_logging(
 
     logfile = os.path.join(
         logs_dir,
-        f"data_mining_{datetime.now():%Y-%m-%d_%H%M%S}.log"
+        f"m2f{datetime.now():%Y-%m-%d_%H%M%S}.log"
     )
     file_h = TimedRotatingFileHandler(
         logfile,
