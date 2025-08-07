@@ -221,7 +221,7 @@ class FreeTXTEmbedder:
                 )
             """)
             self._conn.commit()
-            atexit.register(self._conn.close)
+            atexit.register(self._flush_and_close)
             self._LRU_cache = OrderedDict()
             _logger.debug("SQLite cache initialised at %s", cache_file_path)
         else:
@@ -237,6 +237,23 @@ class FreeTXTEmbedder:
         self._LRU_cache_size_kb = 0
 
     # ---------PRIVATE-----------
+    def _flush_and_close(self):
+        """Persist any embeddings still in the LRU and close the DB."""
+        if self._db is None or self._LRU_cache is None:
+            return
+
+        if self._LRU_cache:
+            _logger.info("Flushing %d vectors from LRU to SQLite before exit",
+                         len(self._LRU_cache))
+            self._db.executemany(
+                "INSERT OR REPLACE INTO embeddings VALUES (?, ?)",
+                [(s, sqlite3.Binary(emb.tobytes()))
+                 for s, emb in self._LRU_cache.items()]
+            )
+            self._conn.commit()
+
+        self._conn.close()
+
     def __db_lookup(self, s: str):
         self._db.execute("""
                 SELECT vec FROM embeddings

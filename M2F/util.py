@@ -1,6 +1,8 @@
 import re
 import os
-from typing import Any
+import warnings
+import functools
+from typing import Any, Type
 
 def files_from(dir_path: str, pattern: re.Pattern = None):
     pattern = pattern or re.compile(r".*")
@@ -15,3 +17,14 @@ def compose(*funcs):
             x = f(x, *args)
         return x
     return inner
+
+def suppress_warnings(*warning_types: Type[Warning]):
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            with warnings.catch_warnings():
+                for w in warning_types:
+                    warnings.simplefilter("ignore", w)
+                return func(*args, **kwargs)
+        return wrapper
+    return decorator

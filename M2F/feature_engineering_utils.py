@@ -1,17 +1,22 @@
 # builtins:
 import re
 import os
-from typing import Union, List, Tuple
+from typing import Union, List, Tuple, Dict, Any, Optional
 
 # third-party:
 import pandas as pd
 import numpy as np
 import zarr
+from zarr.core.dtype.npy.bytes import RawBytes
 from .embedding_utils import (FreeTXTEmbedder,
                               AAChainEmbedder,
                               GOEncoder,
                               ECEncoder,
                               encode_multihot)
+
+# local:
+from . import util
+
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -48,17 +53,122 @@ def vals2embs_map(df: pd.DataFrame, col: str, embedder: Union[AAChainEmbedder, F
     val2emb_map = dict(zip(vals, embedder.embed_sequences(vals, batch_size)))
     return val2emb_map
 
-def save_df(df: pd.DataFrame, zarr_file: str) -> None:
-    root = zarr.group(zarr_file, overwrite=True)
-    for col in df.columns:
-       isna_mask = df[col].isna()
-       notna_mask = ~isna_mask
-       isna_accessions = df.index[isna_mask].sort()
-       notna_accessions = df.index[notna_mask].sort()
-       vecs = notna_accessions.to_list()
+# there's a bunch of harmless warnings caused by zipfile lib,
+# and one zarr warning regarding a dtype I used for strings -- also harmless
+@util.suppress_warnings(zarr.core.dtype.common.UnstableSpecificationWarning, UserWarning)
+def save_df(df: pd.DataFrame, name: str, metadata: Optional[dict] = None) -> None:
+    # ---------define-helpers---------
+    def encode_strings(strings: np.ndarray) -> Tuple[str, np.ndarray]:
+        max_len = max(len(s) for s in strings)
+        # dtype='S⟨max_len⟩' == “fixed-length bytes” (1 byte per char)
+        dtype = f"S{max_len}"
+        data = np.asarray(strings, dtype=dtype)
+        return dtype, data
 
-def load_df(zarr_file: str) -> pd.DataFrame:
-    pass
+    def flatten_offset(tuples: tuple) -> Tuple[np.ndarray, np.ndarray]:
+        flat_vals = np.fromiter((x for tup in tuples for x in tup), dtype='int32')
+        lengths = np.array([len(t) for t in tuples], dtype='int32')
+        # offsets assume an extra entry at end for slicing convenience
+        offsets = np.empty(len(tuples)+1, dtype='int32')
+        offsets[0] = 0
+        np.cumsum(lengths, out=offsets[1:])
+        return np.array(flat_vals, dtype=np.uint16), np.array(offsets, dtype=np.uint16)
+    # --------------------------------
+
+    with zarr.storage.ZipStore(f"{name}.zip", mode="w") as store:
+        root = zarr.group(store, overwrite=True)
+        
+        # -----save-accession-pointers----
+        df = df.sort_values(by="Entry").copy()
+        dtype, data_bytes = encode_strings(df["Entry"].to_numpy())
+        root.create_array('accessions', data=data_bytes, compressors=zarr.codecs.BloscCodec(cname="zlib", clevel=3, shuffle=zarr.codecs.BloscShuffle.noshuffle))
+        # --------------------------------
+
+        # ---------save-cols-data---------
+        for col_name in sorted([col for col in df.columns if col != "Entry"]):
+            col_storage = root.create_group(col_name)
+            notna_mask = ~df[col_name].isna()
+            # filter out missing data
+            notna_accessions = df["Entry"][notna_mask]
+            notna_vals = df[col_name][notna_mask]
+            if notna_vals.empty:
+                col_storage.attrs["is_empty"] = True
+                continue
+            else:
+                col_storage.attrs["is_empty"] = False
+
+            accession_dtype, data_bytes = encode_strings(notna_accessions.to_numpy())
+            col_storage.create_array('accessions', data=data_bytes,
+                                    compressors=zarr.codecs.BloscCodec(cname="zlib", clevel=3, shuffle=zarr.codecs.BloscShuffle.noshuffle))
+
+            if isinstance(notna_vals.iloc[0], tuple):
+                flat_vals, offsets = flatten_offset(notna_vals)
+                col_storage.create_array('flat_vals', data=flat_vals,
+                                        compressors=zarr.codecs.BloscCodec(cname="lz4", clevel=2, shuffle=zarr.codecs.BloscShuffle.bitshuffle))
+                col_storage.create_array('offsets', data=offsets,
+                                        compressors=zarr.codecs.BloscCodec(cname="lz4", clevel=2, shuffle=zarr.codecs.BloscShuffle.bitshuffle))
+
+            elif isinstance(notna_vals.iloc[0], np.ndarray):
+                data = np.vstack(notna_vals, dtype=np.float32)
+                col_storage.create_array(name="data", data=data,
+                                        compressors=zarr.codecs.BloscCodec(cname="zstd", clevel=3, shuffle=zarr.codecs.BloscShuffle.shuffle))
+
+            else:
+                raise ValueError(f"The dataframe contains unsupported dtype: {type(notna_vals.iloc[0])}. Expected: 'tuple' or 'ndarray'")
+
+        # -----------add-metadata---------
+        if metadata is None:
+            return
+        for attr, desc in metadata.items():
+            root.attrs[attr] = desc
+        # --------------------------------
+
+def load_df(path: str) -> pd.DataFrame:
+    if not path.endswith(".zip"):
+        path += ".zip"
+    store = zarr.storage.ZipStore(path, mode="r")
+    root = zarr.open_group(store, mode="r")
+
+    def decode_strings(b: np.ndarray) -> np.ndarray:
+        return np.char.decode(b, encoding="ascii")
+
+    full_acc = decode_strings(root["accessions"][:])
+    df = pd.DataFrame({"Entry": full_acc})
+
+    for col_name in root.group_keys():
+        grp = root[col_name]
+        is_empty = grp.attrs.get("is_empty")
+
+        if is_empty:
+            df[col_name] = np.nan
+            continue
+
+        col_acc = decode_strings(grp["accessions"][:])
+
+        if {"flat_vals", "offsets"} <= set(grp.array_keys()):
+            flat = grp["flat_vals"][:].astype(int)
+            offs = grp["offsets"][:].astype(int)
+            values = [
+                tuple(flat[offs[i]:offs[i + 1]])
+                for i in range(len(col_acc))
+            ]
+
+        elif "data" in grp.array_keys():
+            data   = grp["data"][:].astype(np.float32)
+            values = [row for row in data]
+
+        else:
+            raise ValueError(
+                f"Unknown layout in column '{col_name}': {grp.array_keys()}"
+            )
+
+        mapping = dict(zip(col_acc, values))
+        df[col_name] = df["Entry"].map(mapping)
+
+    df.attrs.update(dict(root.attrs))
+    df.sort_index(axis=1, inplace=True)
+
+    return df
 
 def empty_tuples_to_NaNs(df: pd.DataFrame, inplace=False) -> None:
     if not inplace:

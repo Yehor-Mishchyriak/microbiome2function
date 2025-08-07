@@ -7,6 +7,8 @@ from .logging_utils import configure_logging
 
 
 __all__ = [
+    # logging
+    "configure_logging"
     # mining utils
     "extract_accessions_from_humann",
     "extract_all_accessions_from_dir",
