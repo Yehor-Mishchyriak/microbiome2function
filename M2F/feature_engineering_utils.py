@@ -1,13 +1,12 @@
 # builtins:
 import re
 import os
-from typing import Union, List, Tuple, Dict, Any, Optional
+from typing import Union, List, Tuple, Optional
 
 # third-party:
 import pandas as pd
 import numpy as np
 import zarr
-from zarr.core.dtype.npy.bytes import RawBytes
 from .embedding_utils import (FreeTXTEmbedder,
                               AAChainEmbedder,
                               GOEncoder,
