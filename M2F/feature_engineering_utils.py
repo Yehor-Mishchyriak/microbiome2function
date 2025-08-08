@@ -2,21 +2,26 @@
 import re
 import os
 from typing import Union, List, Tuple, Optional
+import logging
 
 # third-party:
 import pandas as pd
 import numpy as np
 import zarr
+
+# local:
 from .embedding_utils import (FreeTXTEmbedder,
                               AAChainEmbedder,
                               GOEncoder,
                               ECEncoder,
                               encode_multihot)
-
-# local:
 from . import util
 
+# *-----------------------------------------------*
+#                      GLOBALS
+# *-----------------------------------------------*
 
+_logger = logging.getLogger(__name__)
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # *-----------------------------------------------*
@@ -24,6 +29,18 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 # *-----------------------------------------------*
 
 def max_pool(embeddings: List[np.ndarray]) -> np.ndarray:
+    """
+    Select the embedding with the maximum L2 norm from a list of embeddings.
+
+    Args:
+        embeddings: A list of numpy arrays representing embedding vectors.
+
+    Returns:
+        The embedding (numpy array) with the highest L2 norm.
+
+    Raises:
+        ValueError: If the list is empty or if embeddings have differing shapes.
+    """
     if not embeddings:
         raise ValueError("Cannot max pool empty list of embeddings")
     
@@ -41,6 +58,19 @@ def max_pool(embeddings: List[np.ndarray]) -> np.ndarray:
     return embeddings[max_idx]
 
 def vals2embs_map(df: pd.DataFrame, col: str, embedder: Union[AAChainEmbedder, FreeTXTEmbedder], batch_size: int):
+    """
+    Create a mapping from each individual value in a DataFrame column to its embedding.
+
+    Args:
+        df: Input DataFrame containing the column to embed.
+        col: Name of the column in df whose values are iterables of items to embed.
+        embedder: An instance of AAChainEmbedder or FreeTXTEmbedder for generating embeddings.
+        batch_size: Number of items to embed per batch call.
+
+    Returns:
+        A dictionary mapping each unique item to its embedding (numpy array).
+        Returns an empty dict if there are no items to embed.
+    """
     unique_vals = df[col].dropna().unique()
     vals = [item
             for val in unique_vals
@@ -56,6 +86,22 @@ def vals2embs_map(df: pd.DataFrame, col: str, embedder: Union[AAChainEmbedder, F
 # and one zarr warning regarding a dtype I used for strings -- also harmless
 @util.suppress_warnings(zarr.core.dtype.common.UnstableSpecificationWarning, UserWarning)
 def save_df(df: pd.DataFrame, name: str, metadata: Optional[dict] = None) -> None:
+    """
+    Persist a heterogeneous DataFrame to a Zarr ZipStore (.zip).
+
+    Supports:
+      - ASCII string IDs        → fixed-length byte arrays
+      - Ragged int tuples       → flat int32 values + int32 offsets
+      - Dense float arrays      → 2D float32 datasets
+
+    Args:
+        df: DataFrame to save. Must contain an 'Entry' column of strings.
+        name: Base filename for the output ZipStore (without .zip extension).
+        metadata: Optional dict of key-value attributes to add to the Zarr root.
+
+    Raises:
+        ValueError: If a column contains an unsupported dtype.
+    """
     # ---------define-helpers---------
     def encode_strings(strings: np.ndarray) -> Tuple[str, np.ndarray]:
         max_len = max(len(s) for s in strings)
@@ -74,10 +120,13 @@ def save_df(df: pd.DataFrame, name: str, metadata: Optional[dict] = None) -> Non
         return np.array(flat_vals, dtype=np.uint16), np.array(offsets, dtype=np.uint16)
     # --------------------------------
 
+    _logger.info(f"Saving DataFrame with {df.shape[0]} rows and {df.shape[1]} columns to {name}.zip")
+
     with zarr.storage.ZipStore(f"{name}.zip", mode="w") as store:
         root = zarr.group(store, overwrite=True)
         
         # -----save-accession-pointers----
+        _logger.debug(f"Saving accession numbers")
         df = df.sort_values(by="Entry").copy()
         dtype, data_bytes = encode_strings(df["Entry"].to_numpy())
         root.create_array('accessions', data=data_bytes, compressors=zarr.codecs.BloscCodec(cname="zlib", clevel=3, shuffle=zarr.codecs.BloscShuffle.noshuffle))
@@ -85,12 +134,14 @@ def save_df(df: pd.DataFrame, name: str, metadata: Optional[dict] = None) -> Non
 
         # ---------save-cols-data---------
         for col_name in sorted([col for col in df.columns if col != "Entry"]):
+            _logger.debug(f"Saving the {col_name} column data")
             col_storage = root.create_group(col_name)
             notna_mask = ~df[col_name].isna()
             # filter out missing data
             notna_accessions = df["Entry"][notna_mask]
             notna_vals = df[col_name][notna_mask]
             if notna_vals.empty:
+                _logger.debug(f"{col_name} has no data -- just empty cells")
                 col_storage.attrs["is_empty"] = True
                 continue
             else:
@@ -101,6 +152,7 @@ def save_df(df: pd.DataFrame, name: str, metadata: Optional[dict] = None) -> Non
                                     compressors=zarr.codecs.BloscCodec(cname="zlib", clevel=3, shuffle=zarr.codecs.BloscShuffle.noshuffle))
 
             if isinstance(notna_vals.iloc[0], tuple):
+                _logger.debug(f"{col_name} contains tuples: saving as flattened list + offsets")
                 flat_vals, offsets = flatten_offset(notna_vals)
                 col_storage.create_array('flat_vals', data=flat_vals,
                                         compressors=zarr.codecs.BloscCodec(cname="lz4", clevel=2, shuffle=zarr.codecs.BloscShuffle.bitshuffle))
@@ -109,22 +161,39 @@ def save_df(df: pd.DataFrame, name: str, metadata: Optional[dict] = None) -> Non
 
             elif isinstance(notna_vals.iloc[0], np.ndarray):
                 data = np.vstack(notna_vals, dtype=np.float32)
+                _logger.debug(f"{col_name} contains numpy arrays: saving as a vstacked array of shape {data.shape}")
                 col_storage.create_array(name="data", data=data,
                                         compressors=zarr.codecs.BloscCodec(cname="zstd", clevel=3, shuffle=zarr.codecs.BloscShuffle.shuffle))
 
             else:
+                _logger.error(f"The dataframe contains unsupported dtype: {type(notna_vals.iloc[0])}. Expected: 'tuple' or 'ndarray'")
                 raise ValueError(f"The dataframe contains unsupported dtype: {type(notna_vals.iloc[0])}. Expected: 'tuple' or 'ndarray'")
 
         # -----------add-metadata---------
         if metadata is None:
+            _logger.info(f"Finished saving DataFrame to {name}.zip (no metadata)")
             return
         for attr, desc in metadata.items():
             root.attrs[attr] = desc
         # --------------------------------
+        _logger.info(f"Finished saving DataFrame with metadata to {name}.zip")
 
 def load_df(path: str) -> pd.DataFrame:
+    """
+    Load a DataFrame from a Zarr ZipStore (.zip) created by save_df.
+
+    Args:
+        path: Path to the .zip file or base name without extension.
+
+    Returns:
+        Reconstructed pandas DataFrame with original columns and metadata.
+
+    Raises:
+        ValueError: If a column layout in the store is unrecognized.
+    """
     if not path.endswith(".zip"):
         path += ".zip"
+    _logger.info(f"Loading DataFrame from {path}")
     store = zarr.storage.ZipStore(path, mode="r")
     root = zarr.open_group(store, mode="r")
 
@@ -135,6 +204,7 @@ def load_df(path: str) -> pd.DataFrame:
     df = pd.DataFrame({"Entry": full_acc})
 
     for col_name in root.group_keys():
+        _logger.debug(f"Loading {col_name} data")
         grp = root[col_name]
         is_empty = grp.attrs.get("is_empty")
 
@@ -166,10 +236,21 @@ def load_df(path: str) -> pd.DataFrame:
 
     df.attrs.update(dict(root.attrs))
     df.sort_index(axis=1, inplace=True)
+    _logger.info(f"Loaded DataFrame with {df.shape[0]} rows and {df.shape[1]} columns from {path}")
 
     return df
 
 def empty_tuples_to_NaNs(df: pd.DataFrame, inplace=False) -> None:
+    """
+    Replace all empty tuple entries in a DataFrame with NaN values.
+
+    Args:
+        df: Input DataFrame.
+        inplace: If True, modify the DataFrame in place; otherwise, return a copy.
+
+    Returns:
+        DataFrame where every occurrence of an empty tuple is replaced by np.nan.
+    """
     if not inplace:
         df = df.copy(deep=True)
     df.loc[:, :] = df.map(lambda x: np.nan if x == () else x)
@@ -181,6 +262,19 @@ def empty_tuples_to_NaNs(df: pd.DataFrame, inplace=False) -> None:
 
 def embed_freetxt_cols(df: pd.DataFrame, cols: List[str], embedder: FreeTXTEmbedder,
                     batch_size: int = 1000, inplace=False) -> pd.DataFrame:
+    """
+    Embed specified free-text columns of a DataFrame using FreeTXTEmbedder.
+
+    Args:
+        df: Input DataFrame.
+        cols: List of column names containing iterables of strings to embed.
+        embedder: FreeTXTEmbedder instance to generate embeddings.
+        batch_size: Batch size for embedding calls.
+        inplace: If True, modify df in place; otherwise, return a new DataFrame.
+
+    Returns:
+        DataFrame with the specified columns replaced by their max-pooled embeddings.
+    """
     if not inplace:
         df = df.copy(deep=True)
     for col in cols:
@@ -194,6 +288,15 @@ def embed_freetxt_cols(df: pd.DataFrame, cols: List[str], embedder: FreeTXTEmbed
 # *-----------------------------------------------*
 
 def _domain_aa_ranges(domains: Tuple[str]) -> List[Tuple[int,int]]:
+    """
+    Parse domain range strings of the form 'start..end' into 0-based index tuples.
+
+    Args:
+        domains: Tuple of domain range strings (e.g., ('5..10', '20..30')).
+
+    Returns:
+        List of (start_index, end_index) tuples where start is inclusive and end is exclusive.
+    """
     ranges = []
     for d in domains:
         m = re.match(r"^(\d+)\.\.(\d+)$", d)
@@ -204,11 +307,36 @@ def _domain_aa_ranges(domains: Tuple[str]) -> List[Tuple[int,int]]:
     return ranges
 
 def _get_domain_sequences(domains: Tuple[str, ...], full_seq: Tuple[str]) -> List[str]:
+    """
+    Extract subsequences of a full amino acid sequence for given domain ranges.
+
+    Args:
+        domains: Tuple of domain range strings.
+        full_seq: Tuple containing the full sequence as its first element.
+
+    Returns:
+        List of substring sequences for each valid domain range.
+    """
     # Note: need to do full_seq[0] because it's a singleton tuple
     return [full_seq[0][s:e] for s, e in _domain_aa_ranges(domains)]
 
 def embed_ft_domains(df: pd.DataFrame, embedder: AAChainEmbedder,
                      batch_size: int = 128, inplace: bool = False) -> pd.DataFrame:
+    """
+    Embed domain-specific subsequences of protein chains using AAChainEmbedder.
+
+    Extracts domain sequences from 'Domain [FT]' and 'Sequence' columns,
+    computes embeddings for each domain, and replaces 'Domain [FT]' with the max-pooled embedding.
+
+    Args:
+        df: Input DataFrame.
+        embedder: AAChainEmbedder instance for generating embeddings.
+        batch_size: Batch size for embedding calls.
+        inplace: If True, modify df in place; otherwise, return a copy.
+
+    Returns:
+        DataFrame with the 'Domain [FT]' column replaced by embeddings.
+    """
     if not inplace:
         df = df.copy(deep=True)
 
@@ -227,6 +355,18 @@ def embed_ft_domains(df: pd.DataFrame, embedder: AAChainEmbedder,
 
 def embed_AAsequences(df: pd.DataFrame, embedder: AAChainEmbedder,
                       batch_size: int = 128, inplace: bool = False) -> pd.DataFrame:
+    """
+    Embed full amino acid sequences in the DataFrame using AAChainEmbedder.
+
+    Args:
+        df: Input DataFrame with a 'Sequence' column.
+        embedder: AAChainEmbedder instance for generating embeddings.
+        batch_size: Batch size for embedding calls.
+        inplace: If True, modify df in place; otherwise, return a copy.
+
+    Returns:
+        DataFrame with the 'Sequence' column replaced by embedding arrays.
+    """
     if not inplace:
         df = df.copy(deep=True)
 

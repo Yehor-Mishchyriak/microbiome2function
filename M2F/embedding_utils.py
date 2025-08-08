@@ -6,6 +6,7 @@ from typing import List, Union, Tuple, Dict
 import sqlite3
 import atexit
 from collections import OrderedDict
+import contextlib
 
 # third-party:
 import torch
@@ -14,13 +15,40 @@ from openai import OpenAI
 from sklearn.preprocessing import MultiLabelBinarizer
 import numpy as np
 import pandas as pd
-from goatools.obo_parser import GODag
+import importlib
+
+# local:
+from . import util
+
+# *-----------------------------------------------*
+#        THIRD-PARTY LIBS WARNINGS HANDLING
+# *-----------------------------------------------*
+
+# Goatools uses pkg_resources, which the setuptools folks plan to phase out by late 2025, thus the warning;
+# -- again, harmless, at least as long as the M2F user sticks to setuptools<81 (which is ensured by requirements.txt)
+@util.suppress_warnings(UserWarning)
+def get_GODag():
+    mod = importlib.import_module("goatools.obo_parser")
+    return mod.GODag
+
+# suppresses the warning about the classification head not being pretrained,
+# which I couldn't care less about because I need one of the hidden layer's states -- not the output layer
+@contextlib.contextmanager
+def silent_transformers():
+    logger = logging.getLogger("transformers.modeling_utils")
+    old_level = logger.level
+    logger.setLevel(logging.ERROR)
+    try:
+        yield
+    finally:
+        logger.setLevel(old_level)
 
 # *-----------------------------------------------*
 #                      GLOBALS
 # *-----------------------------------------------*
 
 _logger = logging.getLogger(__name__)
+GODag = get_GODag()
 
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 #                           DENSE EMBEDDINGS
@@ -70,11 +98,15 @@ class AAChainEmbedder:
         self.repo_id = self.HF_MODELS[model_key]
 
         self.tokenizer = AutoTokenizer.from_pretrained(self.repo_id, use_fast=False)
-        self.model = AutoModel.from_pretrained(
-            self.repo_id,
-            torch_dtype=dtype,
-            device_map="auto" if device.startswith("cuda") else None
-        )
+        
+        # suppressing the “Some weights …” warning
+        with silent_transformers():
+            self.model = AutoModel.from_pretrained(
+                self.repo_id,
+                torch_dtype=dtype,
+                device_map="auto" if device.startswith("cuda") else None
+            )
+
         if device.startswith("cuda"):                    
             self.model.to(torch.device(device))          
         else:
