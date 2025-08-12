@@ -4,6 +4,7 @@ from .cleaning_utils import *
 from .feature_engineering_utils import *
 from .embedding_utils import *
 from .logging_utils import configure_logging
+from . import util
 
 
 __all__ = [
@@ -33,4 +34,6 @@ __all__ = [
     "empty_tuples_to_NaNs",
     "save_df",
     "load_df"
+    # util
+    "util"
 ]

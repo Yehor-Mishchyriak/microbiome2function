@@ -63,7 +63,13 @@ class AAChainEmbedder:
     Parameters
     ----------
     model_key : str
-        Key from `HF_MODELS`.
+        Key from `HF_MODELS`, that is, one of:
+            "esm2_t48_15B_UR50D"\n
+            "esm2_t36_3B_UR50D"\n
+            "esm2_t33_650M_UR50D"\n
+            "esm2_t30_150M_UR50D"\n
+            "esm2_t12_35M_UR50D"\n
+            "esm2_t6_8M_UR50D".\n
     device : str
         Anything accepted by ``torch.device`` (e.g. ``"cuda:0"`` or ``"cpu"``).
     dtype : torch.dtype | None

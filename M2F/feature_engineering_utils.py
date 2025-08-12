@@ -72,11 +72,11 @@ def vals2embs_map(df: pd.DataFrame, col: str, embedder: Union[AAChainEmbedder, F
         Returns an empty dict if there are no items to embed.
     """
     unique_vals = df[col].dropna().unique()
-    vals = [item
+    vals = list(dict.fromkeys([item
             for val in unique_vals
             for item in val
             if item
-        ] # flatten
+        ])) # flatten
     if not vals:
         return {} 
     val2emb_map = dict(zip(vals, embedder.embed_sequences(vals, batch_size)))
@@ -85,7 +85,7 @@ def vals2embs_map(df: pd.DataFrame, col: str, embedder: Union[AAChainEmbedder, F
 # there's a bunch of harmless warnings caused by zipfile lib,
 # and one zarr warning regarding a dtype I used for strings -- also harmless
 @util.suppress_warnings(zarr.core.dtype.common.UnstableSpecificationWarning, UserWarning)
-def save_df(df: pd.DataFrame, name: str, metadata: Optional[dict] = None) -> None:
+def save_df(df: pd.DataFrame, pth: str, metadata: Optional[dict] = None) -> None:
     """
     Persist a heterogeneous DataFrame to a Zarr ZipStore (.zip).
 
@@ -96,12 +96,15 @@ def save_df(df: pd.DataFrame, name: str, metadata: Optional[dict] = None) -> Non
 
     Args:
         df: DataFrame to save. Must contain an 'Entry' column of strings.
-        name: Base filename for the output ZipStore (without .zip extension).
+        pth: Full filename for the output ZipStore (.zip extension is required).
         metadata: Optional dict of key-value attributes to add to the Zarr root.
 
     Raises:
-        ValueError: If a column contains an unsupported dtype.
+        ValueError: If a column contains an unsupported dtype; or if 'pth' is not a zip file.
     """
+    if not pth.endswith(".zip"):
+        raise ValueError(f"'pth' must have .zip extension. Instead, {pth} was given")
+
     # ---------define-helpers---------
     def encode_strings(strings: np.ndarray) -> Tuple[str, np.ndarray]:
         max_len = max(len(s) for s in strings)
@@ -120,9 +123,9 @@ def save_df(df: pd.DataFrame, name: str, metadata: Optional[dict] = None) -> Non
         return np.array(flat_vals, dtype=np.uint16), np.array(offsets, dtype=np.uint16)
     # --------------------------------
 
-    _logger.info(f"Saving DataFrame with {df.shape[0]} rows and {df.shape[1]} columns to {name}.zip")
+    _logger.info(f"Saving DataFrame with {df.shape[0]} rows and {df.shape[1]} columns to {pth}")
 
-    with zarr.storage.ZipStore(f"{name}.zip", mode="w") as store:
+    with zarr.storage.ZipStore(pth, mode="w") as store:
         root = zarr.group(store, overwrite=True)
         
         # -----save-accession-pointers----
@@ -171,12 +174,12 @@ def save_df(df: pd.DataFrame, name: str, metadata: Optional[dict] = None) -> Non
 
         # -----------add-metadata---------
         if metadata is None:
-            _logger.info(f"Finished saving DataFrame to {name}.zip (no metadata)")
+            _logger.info(f"Finished saving DataFrame to {pth} (no metadata)")
             return
         for attr, desc in metadata.items():
             root.attrs[attr] = desc
         # --------------------------------
-        _logger.info(f"Finished saving DataFrame with metadata to {name}.zip")
+        _logger.info(f"Finished saving DataFrame with metadata to {pth}")
 
 def load_df(path: str) -> pd.DataFrame:
     """
@@ -240,7 +243,7 @@ def load_df(path: str) -> pd.DataFrame:
 
     return df
 
-def empty_tuples_to_NaNs(df: pd.DataFrame, inplace=False) -> None:
+def empty_tuples_to_NaNs(df: pd.DataFrame, inplace=False) -> pd.DataFrame:
     """
     Replace all empty tuple entries in a DataFrame with NaN values.
 
