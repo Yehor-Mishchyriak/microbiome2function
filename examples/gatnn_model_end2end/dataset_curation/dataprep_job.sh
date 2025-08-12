@@ -20,9 +20,9 @@ conda activate gnn_func_annotation
 export PYTHONPATH=/cluster/home/myehor01/data_processing/microbiome2function/M2F:$PYTHONPATH
 
 # env vars
-export RAW_DATA=
-export SAVE_PROCESSED_TO_DIR=
-export LOGS_DIR=
+export RAW_DATA=/cluster/home/myehor01/data_processing/uniprot_mine_output_dir
+export SAVE_PROCESSED_TO_DIR=/cluster/home/myehor01/data_processing
+export LOGS_DIR=/cluster/home/myehor01/data_processing
 export JOB_NAME=$SLURM_JOB_NAME
 
 cd /cluster/home/myehor01/data_processing/microbiome2function/
