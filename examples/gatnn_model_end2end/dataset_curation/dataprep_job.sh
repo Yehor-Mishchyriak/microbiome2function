@@ -26,6 +26,6 @@ export LOGS_DIR=/cluster/home/myehor01/data_processing
 export JOB_NAME=$SLURM_JOB_NAME
 
 cd /cluster/home/myehor01/data_processing/microbiome2function/
-python application/dataset_curation/data_preparation.py
+python examples/gatnn_model_end2end/dataset_curation/data_preparation.py
 
 conda deactivate
