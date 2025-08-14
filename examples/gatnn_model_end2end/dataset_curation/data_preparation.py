@@ -54,14 +54,19 @@ apply_norms={"Domain [FT]" : False,
 try:
     aa_embedder = M2F.AAChainEmbedder(model_key="esm2_t6_8M_UR50D", device="cuda:0")
     logger.info("AAChainEmbedder will use a CUDA device")
-except Exception:
-    logger.info("AAChainEmbedder will use a CPU")
+except Exception as e:
+    logger.info(f"AAChainEmbedder will use a CPU, because: {e}")
     aa_embedder = M2F.AAChainEmbedder(model_key="esm2_t6_8M_UR50D", device="cpu")
 
+if os.path.exists(db_path):
+    caching_mode = "APPEND"
+else:
+    caching_mode = "CREATE/OVERRIDE"
+    
 txt_embedder = M2F.FreeTXTEmbedder(api_key,
                                 model="LARGE_OPENAI_MODEL",
                                 cache_file_path=db_path,
-                                caching_mode="CREATE/OVERRIDE",
+                                caching_mode=caching_mode,
                                 max_cache_size_kb=20_000)
 
 # total number of rows to process is: 859,660
