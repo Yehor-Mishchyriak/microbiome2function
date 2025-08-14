@@ -162,21 +162,6 @@ M2F is designed to be easily extensible:
 - **Different embeddings**: Clone existing embedder classes and swap models
 - **Custom serialization**: Follow the `save_df`/`load_df` pattern for new data types
 
-## License
-
-[Add your license here]
-
-## Citation
-
-```bibtex
-@misc{mishchyriak2025m2f,
-  author = {Yehor Mishchyriak},
-  title = {M2F: A practical pipeline for mining UniProt and turning biology into machine-learnable features},
-  year = {2025},
-  note = {Summer Research Intern, Bonham Lab, Tufts University School of Medicine}
-}
-```
-
 ## Contact
 
 - **Author**: Yehor Mishchyriak (ymishchyriak@wesleyan.edu)
