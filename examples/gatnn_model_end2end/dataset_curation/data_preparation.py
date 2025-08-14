@@ -62,7 +62,7 @@ if os.path.exists(db_path):
     caching_mode = "APPEND"
 else:
     caching_mode = "CREATE/OVERRIDE"
-    
+
 txt_embedder = M2F.FreeTXTEmbedder(api_key,
                                 model="LARGE_OPENAI_MODEL",
                                 cache_file_path=db_path,
@@ -74,7 +74,7 @@ def process_df_inplace(df: pd.DataFrame, *, col_names: list, apply_norms: dict) 
     # Note: original columns are:
     # Entry,Domain [FT],Domain [CC],Protein families,Gene Ontology (molecular function),Gene Ontology (biological process),Function [CC],Catalytic activity,EC number,Pathway,Rhea ID,Cofactor,Sequence
     # But we want to keep only a specific subset of them
-    df.drop(columns=["Protein families", "Rhea ID"])
+    df.drop(columns=["Protein families", "Rhea ID"], inplace=True)
 
     # clean
     M2F.clean_cols(df, col_names=col_names, apply_norms=apply_norms, inplace=True)
@@ -89,14 +89,16 @@ def process_df_inplace(df: pd.DataFrame, *, col_names: list, apply_norms: dict) 
 
     return {"gomf_meta": gomf_meta, "gobp_meta": gobp_meta, "ec_meta": ec_meta, "cofactor_meta": cofactor_meta}
 
-
-for file in M2F.util.files_from(raw_data):
-	# load
-	df = pd.read_csv(file)
-	# process
-	meta = process_df_inplace(df, col_names=col_names, apply_norms=apply_norms)
-	# save
-	out_pth = out + os.path.basename(file).replace(".csv", ".zip")
-	M2F.save_df(df, out_pth, metadata=meta)
+files = M2F.util.files_from(raw_data)
+logger.info(f"Processing {len(files)} files")
+for i, file in enumerate(files, start=1):
+    logger.info(f"Processing file number {i}")
+    # load
+    df = pd.read_csv(file)
+    # process
+    meta = process_df_inplace(df, col_names=col_names, apply_norms=apply_norms)
+    # save
+    out_pth = os.path.join(out, os.path.basename(file).replace(".csv", ".zip"))
+    M2F.save_df(df, out_pth, metadata=meta)
 
 print(f"Processed data is available at {out}")
