@@ -90,7 +90,7 @@ def process_df_inplace(df: pd.DataFrame, *, col_names: list, apply_norms: dict) 
     return {"gomf_meta": gomf_meta, "gobp_meta": gobp_meta, "ec_meta": ec_meta, "cofactor_meta": cofactor_meta}
 
 files = M2F.util.files_from(raw_data)
-logger.info(f"Processing {len(files)} files")
+logger.info(f"Processing all the files from {raw_data}")
 for i, file in enumerate(files, start=1):
     logger.info(f"Processing file number {i}")
     # load
