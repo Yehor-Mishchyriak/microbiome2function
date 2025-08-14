@@ -15,7 +15,7 @@ module purge
 
 source $HOME/miniconda3/etc/profile.d/conda.sh
 
-conda activate m2f_env
+conda activate m2fvenv
 
 export PYTHONPATH=/cluster/home/myehor01/data_processing/microbiome2function/M2F:$PYTHONPATH
 
@@ -23,6 +23,7 @@ export PYTHONPATH=/cluster/home/myehor01/data_processing/microbiome2function/M2F
 export RAW_DATA=/cluster/home/myehor01/data_processing/uniprot_mine_output_dir
 export SAVE_PROCESSED_TO_DIR=/cluster/home/myehor01/data_processing
 export LOGS_DIR=/cluster/home/myehor01/data_processing
+export DB=/cluster/home/myehor01/data_processing/data_prep.db
 export JOB_NAME=$SLURM_JOB_NAME
 
 cd /cluster/home/myehor01/data_processing/microbiome2function/
