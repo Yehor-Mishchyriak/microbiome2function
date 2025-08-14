@@ -6,7 +6,7 @@
 #SBATCH -n 1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=20g  #requesting 20GB of RAM total
-#SBATCH --gres=gpu:a100:1
+#SBATCH --gres=gpu:1 #couldve done 'gpu:a100:1', but I don't care too much about what kind of GPU it is
 #SBATCH --output=data_prep.%j.%N.out  #saving standard output to file, %j=JOBID, %N=NodeName
 #SBATCH --error=data_prep.%j.%N.err   #saving standard error to file, %j=JOBID, %N=NodeName
 #SBATCH --mail-type=ALL    #email options
