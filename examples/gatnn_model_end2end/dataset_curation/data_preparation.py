@@ -92,13 +92,19 @@ def process_df_inplace(df: pd.DataFrame, *, col_names: list, apply_norms: dict) 
 files = M2F.util.files_from(raw_data)
 logger.info(f"Processing all the files from {raw_data}")
 for i, file in enumerate(files, start=1):
-    logger.info(f"Processing file number {i}")
+    file_name = os.path.basename(file)
+    out_pth = os.path.join(out, file_name.replace(".csv", ".zip"))
+    # Note: this is needed in case we rerun the job that was stopped in the middle of execution
+    # so that we don't duplicate files
+    if os.path.exists(out_pth):
+        logger.info(f"File number {i} ({file_name}) already exists; Skipping")
+        continue
+    logger.info(f"Processing file number {i}: {file_name}")
     # load
     df = pd.read_csv(file)
     # process
     meta = process_df_inplace(df, col_names=col_names, apply_norms=apply_norms)
     # save
-    out_pth = os.path.join(out, os.path.basename(file).replace(".csv", ".zip"))
     M2F.save_df(df, out_pth, metadata=meta)
 
 print(f"Processed data is available at {out}")
