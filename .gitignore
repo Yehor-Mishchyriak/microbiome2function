@@ -22,5 +22,6 @@
 !.gitignore
 !README.MD
 !requirements.txt
+!docs.md
 !M2F_API_reference.pdf
 !M2F.pdf
