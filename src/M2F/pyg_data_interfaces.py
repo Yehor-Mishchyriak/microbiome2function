@@ -2,7 +2,9 @@
 import pandas as pd
 import torch
 import numpy as np
-from torch_geometric.data import InMemoryDataset, OnDiskDataset, Data
+import zarr
+from zarr.storage import LocalStore, ZipStore
+from torch_geometric.data import InMemoryDataset, Data, FeatureStore, TensorAttr
 
 # built-in
 from dataclasses import dataclass, field
@@ -11,12 +13,279 @@ from pathlib import Path
 import re
 import shutil
 import logging
+import json
+import hashlib
 
 # local
 from . import util
 from .mining_utils import fetch_uniprotkb_fields
 
 _logger = logging.getLogger(__name__)
+
+
+class ZarrFeatureStore(FeatureStore):
+    """
+    PyG FeatureStore backed by a single-root Zarr group.
+
+    Each tensor is stored as a Zarr array where axis-0 is the row axis
+    (e.g., node id or edge id). Tensor identity is tracked by
+    (group_name, attr_name) from TensorAttr.
+
+    Path behavior:
+    - `*.zip` path -> read-only ZipStore backend
+    - otherwise -> LocalStore at `<pth>.zarr` (if no `.zarr` suffix)
+    """
+
+    _ATTR_MAP_KEY = "tensor_attr_map"
+
+    def __init__(
+        self,
+        pth: str | Path,
+        mode: str = "a",
+        rows_per_chunk: int = 1024,
+    ) -> None:
+        super().__init__(tensor_attr_cls=TensorAttr)
+
+        if not isinstance(pth, (str, Path)):
+            raise TypeError(f"`pth` must be str | Path, got {type(pth)}")
+        if mode not in {"r", "a", "w", "w-", "r+"}:
+            raise ValueError(f"Unsupported zarr mode: {mode}")
+        if rows_per_chunk < 1:
+            raise ValueError("`rows_per_chunk` must be >= 1")
+
+        self.mode = mode
+        self.rows_per_chunk = int(rows_per_chunk)
+
+        p = Path(pth)
+        if p.suffix == ".zip":
+            if mode != "r":
+                raise ValueError("ZipStore must be opened with mode='r'")
+            self.store_path = p.resolve()
+            if not self.store_path.exists():
+                raise FileNotFoundError(f"No ZipStore at: {self.store_path}")
+            self.store = ZipStore(self.store_path, mode="r")
+            self.read_only = True
+        else:
+            self.store_path = (p if p.suffix == ".zarr" else p.with_suffix(".zarr")).resolve()
+            self.store = LocalStore(self.store_path)
+            self.read_only = (mode == "r")
+
+        self.root = zarr.open_group(store=self.store, mode=mode)
+        self._attrs = self.root.attrs
+        self._attrs.setdefault(self._ATTR_MAP_KEY, {})
+        self._reload_meta()
+
+    def close(self) -> None:
+        if hasattr(self.store, "close"):
+            self.store.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        self.close()
+
+    # ---------------------------- internals ----------------------------
+
+    @staticmethod
+    def _as_numpy(tensor: Any) -> np.ndarray:
+        if isinstance(tensor, np.ndarray):
+            arr = tensor
+        elif torch.is_tensor(tensor):
+            arr = tensor.detach().cpu().numpy()
+        else:
+            arr = np.asarray(tensor)
+        if arr.ndim == 0:
+            arr = arr.reshape(1)
+        return arr
+
+    @staticmethod
+    def _normalize_index(index: Any) -> int | slice | np.ndarray:
+        if isinstance(index, slice):
+            return index
+        if isinstance(index, int):
+            return int(index)
+        if torch.is_tensor(index):
+            idx = index.detach().cpu().numpy()
+        else:
+            idx = np.asarray(index)
+        if idx.dtype == bool:
+            idx = np.flatnonzero(idx)
+        return idx.astype(np.intp, copy=False)
+
+    @staticmethod
+    def _json_safe(value: Any) -> Any:
+        if isinstance(value, tuple):
+            return {"__tuple__": [ZarrFeatureStore._json_safe(v) for v in value]}
+        if isinstance(value, list):
+            return [ZarrFeatureStore._json_safe(v) for v in value]
+        if isinstance(value, dict):
+            return {str(k): ZarrFeatureStore._json_safe(v) for k, v in value.items()}
+        return value
+
+    @staticmethod
+    def _json_restore(value: Any) -> Any:
+        if isinstance(value, dict) and "__tuple__" in value:
+            return tuple(ZarrFeatureStore._json_restore(v) for v in value["__tuple__"])
+        if isinstance(value, list):
+            return [ZarrFeatureStore._json_restore(v) for v in value]
+        if isinstance(value, dict):
+            return {k: ZarrFeatureStore._json_restore(v) for k, v in value.items()}
+        return value
+
+    def _attr_key_payload(self, attr: TensorAttr) -> dict[str, Any]:
+        return {
+            "group_name": self._json_safe(attr.group_name),
+            "attr_name": attr.attr_name,
+        }
+
+    def _payload_signature(self, payload: dict[str, Any]) -> str:
+        return json.dumps(payload, sort_keys=True, separators=(",", ":"))
+
+    def _array_name_from_sig(self, sig: str) -> str:
+        digest = hashlib.sha1(sig.encode("utf-8"), usedforsecurity=False).hexdigest()
+        return f"tensor_{digest}"
+
+    def _reload_meta(self) -> None:
+        raw_map = dict(self._attrs.get(self._ATTR_MAP_KEY, {}))
+        self._sig_to_array: dict[str, str] = {}
+        self._array_to_payload: dict[str, dict[str, Any]] = {}
+        for array_name, payload in raw_map.items():
+            payload = self._json_restore(payload)
+            sig = self._payload_signature(payload)
+            self._sig_to_array[sig] = array_name
+            self._array_to_payload[array_name] = payload
+
+    def _persist_meta(self) -> None:
+        serializable = {
+            name: self._json_safe(payload)
+            for name, payload in self._array_to_payload.items()
+        }
+        self._attrs[self._ATTR_MAP_KEY] = serializable
+
+    def _resolve_array_name(self, attr: TensorAttr, *, create: bool) -> str | None:
+        payload = self._attr_key_payload(attr)
+        sig = self._payload_signature(payload)
+        existing = self._sig_to_array.get(sig)
+        if existing is not None:
+            return existing
+        if not create:
+            return None
+        if self.read_only:
+            raise RuntimeError("Cannot register new tensors in read-only store")
+        name = self._array_name_from_sig(sig)
+        i = 0
+        while name in self.root and name not in self._array_to_payload:
+            i += 1
+            name = f"{name}_{i}"
+        self._sig_to_array[sig] = name
+        self._array_to_payload[name] = payload
+        self._persist_meta()
+        return name
+
+    @staticmethod
+    def _array_select(array: zarr.Array, index: Any) -> np.ndarray:
+        if index is None:
+            out = array[...]
+            return np.asarray(out, copy=True)
+
+        idx = ZarrFeatureStore._normalize_index(index)
+        if isinstance(idx, (slice, int)):
+            out = array[idx, ...]
+            return np.asarray(out, copy=True)
+
+        out = array.get_orthogonal_selection((idx,) + (slice(None),) * (array.ndim - 1))
+        return np.asarray(out, copy=True)
+
+    # ----------------------- FeatureStore methods ----------------------
+
+    def _put_tensor(self, tensor: Any, attr: TensorAttr) -> bool:
+        if self.read_only:
+            raise RuntimeError("Cannot write to read-only ZarrFeatureStore")
+
+        arr_np = self._as_numpy(tensor)
+        array_name = self._resolve_array_name(attr, create=True)
+        assert array_name is not None
+
+        if array_name not in self.root:
+            if attr.index is not None:
+                raise ValueError(
+                    "Cannot put by index into a tensor that does not exist yet; "
+                    "insert the full tensor first (`index=None`)."
+                )
+            chunk_rows = min(max(1, arr_np.shape[0]), self.rows_per_chunk)
+            chunks = (chunk_rows,) + arr_np.shape[1:]
+            self.root.create_array(
+                name=array_name,
+                data=arr_np,
+                chunks=chunks,
+            )
+            return True
+
+        array = self.root[array_name]
+        if not isinstance(array, zarr.Array):
+            raise TypeError(f"Stored object '{array_name}' is not a zarr.Array")
+
+        casted = arr_np.astype(array.dtype, copy=False)
+        if attr.index is None:
+            if tuple(array.shape) != tuple(casted.shape):
+                array.resize(casted.shape)
+            array[...] = casted
+        else:
+            idx = self._normalize_index(attr.index)
+            array[idx, ...] = casted
+        return True
+
+    def _get_tensor(self, attr: TensorAttr) -> Any:
+        array_name = self._resolve_array_name(attr, create=False)
+        if array_name is None or array_name not in self.root:
+            return None
+        array = self.root[array_name]
+        if not isinstance(array, zarr.Array):
+            return None
+        out = self._array_select(array, attr.index)
+        return torch.from_numpy(out)
+
+    def _remove_tensor(self, attr: TensorAttr) -> bool:
+        if self.read_only:
+            raise RuntimeError("Cannot delete from read-only ZarrFeatureStore")
+        array_name = self._resolve_array_name(attr, create=False)
+        if array_name is None:
+            return False
+        deleted = False
+        if array_name in self.root:
+            del self.root[array_name]
+            deleted = True
+
+        payload = self._array_to_payload.pop(array_name, None)
+        if payload is not None:
+            sig = self._payload_signature(payload)
+            self._sig_to_array.pop(sig, None)
+            self._persist_meta()
+        return deleted
+
+    def _get_tensor_size(self, attr: TensorAttr) -> tuple[int, ...] | None:
+        array_name = self._resolve_array_name(attr, create=False)
+        if array_name is None or array_name not in self.root:
+            return None
+        array = self.root[array_name]
+        if not isinstance(array, zarr.Array):
+            return None
+        if attr.index is None:
+            return tuple(array.shape)
+        return tuple(self._array_select(array, attr.index).shape)
+
+    def get_all_tensor_attrs(self) -> list[TensorAttr]:
+        out: list[TensorAttr] = []
+        for payload in self._array_to_payload.values():
+            out.append(
+                self._tensor_attr_cls.cast(
+                    group_name=payload["group_name"],
+                    attr_name=payload["attr_name"],
+                    index=None,
+                )
+            )
+        return out
 
 
 @dataclass
